@@ -16,7 +16,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "test": "vitest run",
-    "typecheck": "tsc -b --pretty false && tsc -p tests/tsconfig.json --pretty false"
+    "typecheck": "tsc -b --pretty false && tsc -p tests/tsconfig.json --pretty false && tsc -p packages/core/test/tsconfig.json --pretty false"
   },
   "engines": {
     "node": ">=24.0.0"
