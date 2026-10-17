@@ -41,6 +41,20 @@ Incoming IDs are rejected by default. Explicit acceptance is an application trus
 
 Request IDs remain separate from distributed tracing. rqg does not model spans, propagation flags, sampling, or W3C Trace Context in the request-identification API.
 
+## Timing and structured logging
+
+Phase 2 separates three layers:
+
+1. `createTimer()` measures any operation with an injectable monotonic clock.
+2. `createLogRecord()` and `writeLog()` validate JSON-compatible records and isolate logger runtime failures without requiring request metadata.
+3. `createRequestObserver()` composes those primitives with an allowlisted request metadata and completion model.
+
+Core never listens to request or response events. Future adapters decide which framework lifecycle signal means completed, failed, or aborted and pass plain values into core. This preserves generic timing and logging use outside HTTP while keeping lifecycle policy reusable.
+
+Logger configuration and record shape errors throw synchronously as programmer errors. Backend throws and promise rejections become explicit `LogWriteResult` failures. Request completion is idempotent: the first call fixes the outcome and duration, and all repeated calls share its result.
+
+Request logging excludes headers, bodies, query values, and errors by construction. The path contract excludes query strings and fragments, but applications should still prefer redacted route templates because sensitive values can appear in path segments.
+
 ## Build and module model
 
 The repository uses npm workspaces rather than an additional monorepo orchestrator. TypeScript project references express build order and package boundaries. Packages compile as ESM with `NodeNext` module resolution and publish JavaScript, source maps, and declarations from `dist/`.
