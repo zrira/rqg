@@ -19,6 +19,16 @@ export {
   type ResolveRequestIdOptions,
 } from './request-id.js';
 export {
+  createRequestObserver,
+  type CreateRequestObserverOptions,
+  type RequestCompletion,
+  type RequestCompletionInput,
+  type RequestMetadata,
+  type RequestObservationResult,
+  type RequestObserver,
+  type RequestOutcome,
+} from './request-observability.js';
+export {
   createTimer,
   type CreateTimerOptions,
   type MonotonicClock,
