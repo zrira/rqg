@@ -1,5 +1,16 @@
 /** Framework-independent request protection primitives. */
 export {
+  MemoryRateLimitStore,
+  type MemoryRateLimitStoreOptions,
+} from './memory-rate-limit-store.js';
+export {
+  RateLimitCapacityError,
+  RateLimitPolicyConflictError,
+  type RateLimitPolicy,
+  type RateLimitStore,
+  type RateLimitStoreResult,
+} from './rate-limit.js';
+export {
   createLogRecord,
   writeLog,
   type JsonObject,
