@@ -33,6 +33,14 @@ Examples are private workspace applications. They demonstrate public APIs and mu
 - Use NestJS dependency injection for configuration and replaceable collaborators.
 - Keep NestJS, RxJS, and reflection support as peer dependencies.
 
+## Request identification
+
+Request identification is implemented entirely in `@rqg/core`. The core receives an `unknown` incoming value rather than an HTTP request or header abstraction. This keeps parsing and framework lifecycle concerns in future adapters while putting validation and trust policy in one reusable place.
+
+Incoming IDs are rejected by default. Explicit acceptance is an application trust decision, not an implication that a syntactically valid ID is authentic. Generation uses Node.js cryptography, and generator injection is scoped to an API call rather than stored globally.
+
+Request IDs remain separate from distributed tracing. rqg does not model spans, propagation flags, sampling, or W3C Trace Context in the request-identification API.
+
 ## Build and module model
 
 The repository uses npm workspaces rather than an additional monorepo orchestrator. TypeScript project references express build order and package boundaries. Packages compile as ESM with `NodeNext` module resolution and publish JavaScript, source maps, and declarations from `dist/`.
