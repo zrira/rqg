@@ -68,8 +68,33 @@ await observer.complete({ outcome: 'completed', statusCode: 200 });
 
 Core models plain request metadata and completion values; it does not depend on HTTP framework objects or lifecycle events.
 
+## Fixed-window rate limiting
+
+```ts
+import { createRateLimiter, MemoryRateLimitStore } from '@rqg/core';
+
+const limiter = createRateLimiter({
+  max: 100,
+  windowMs: 60_000,
+  store: new MemoryRateLimitStore({ maxEntries: 10_000 }),
+});
+
+const decision = await limiter.consume('tenant-123');
+if (!decision.allowed && decision.reason === 'limit-exceeded') {
+  const retryAfterSeconds = Math.ceil(decision.retryAfterMs / 1_000);
+  console.log(`Retry after ${retryAfterSeconds} seconds`);
+}
+```
+
+Windows are anchored to each identity's first consumption. Missing identities and storage failures are rejected by default. Core returns structured decisions and never sends HTTP responses or reads proxy headers.
+
+The memory store is bounded, lazily cleans expired entries, and never evicts an active entry to admit a new identity. Its state and atomicity are local to one store instance and Node.js event-loop context.
+
 ## Guides
 
 - [Request identification](../../docs/concepts/request-identification.md)
 - [Operation timing](../../docs/concepts/operation-timing.md)
 - [Structured logging and request observability](../../docs/concepts/structured-logging.md)
+- [Fixed-window rate limiting](../../docs/concepts/fixed-window-rate-limiting.md)
+- [Rate-limit storage](../../docs/concepts/rate-limit-storage.md)
+- [Concurrency and atomicity](../../docs/concepts/concurrency-and-atomicity.md)

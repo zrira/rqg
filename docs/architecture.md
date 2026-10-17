@@ -55,6 +55,18 @@ Logger configuration and record shape errors throw synchronously as programmer e
 
 Request logging excludes headers, bodies, query values, and errors by construction. The path contract excludes query strings and fragments, but applications should still prefer redacted route templates because sensitive values can appear in path segments.
 
+## Fixed-window rate limiting
+
+Phase 3 separates rate limiting into policy, algorithm, and storage:
+
+- `RateLimitPolicy` defines a positive safe-integer limit and positive finite window duration.
+- `createRateLimiter()` validates identity and configuration, reads an injected monotonic clock, invokes one atomic store operation, and maps state or failure into a structured decision.
+- `RateLimitStore` owns atomic fixed-window state transitions. `MemoryRateLimitStore` is a bounded process-local implementation.
+
+Windows are anchored to an identity's first consumption and expire when `nowMs >= resetAtMs`. Counters saturate at the policy maximum. The in-memory transition is synchronous and atomic only within one event-loop context and store instance; it does not coordinate workers, processes, or deployments.
+
+Identity extraction belongs to adapters and applications. Core accepts an opaque validated string, rejects missing identity by default, and never reads forwarding headers. Storage failure is closed by default, with explicit opt-in fail-open behavior. Memory capacity is bounded, expired entries are lazily removed, and active entries are never evicted to admit attacker-controlled identities.
+
 ## Build and module model
 
 The repository uses npm workspaces rather than an additional monorepo orchestrator. TypeScript project references express build order and package boundaries. Packages compile as ESM with `NodeNext` module resolution and publish JavaScript, source maps, and declarations from `dist/`.
