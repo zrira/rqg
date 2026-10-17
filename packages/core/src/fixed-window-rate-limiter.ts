@@ -1,0 +1,331 @@
+import { performance } from 'node:perf_hooks';
+
+import { MemoryRateLimitStore } from './memory-rate-limit-store.js';
+import {
+  assertRateLimitPolicy,
+  RateLimitCapacityError,
+  type RateLimitPolicy,
+  type RateLimitStore,
+  type RateLimitStoreResult,
+} from './rate-limit.js';
+import type { MonotonicClock } from './timer.js';
+
+export type RateLimitFailureMode = 'closed' | 'open';
+
+export type MissingIdentityPolicy =
+  | { readonly behavior: 'reject' }
+  | { readonly behavior: 'use-shared'; readonly identity: string };
+
+export interface CreateRateLimiterOptions extends RateLimitPolicy {
+  readonly store?: RateLimitStore;
+  readonly clock?: MonotonicClock;
+  /** Defaults to rejecting operations without an identity. */
+  readonly missingIdentity?: MissingIdentityPolicy;
+  /** Defaults to `closed`. */
+  readonly failureMode?: RateLimitFailureMode;
+}
+
+interface RateLimitDecisionBase {
+  readonly allowed: boolean;
+  readonly limit: number;
+}
+
+export interface RateLimitAllowedDecision extends RateLimitDecisionBase {
+  readonly allowed: true;
+  readonly reason: 'within-limit';
+  readonly remaining: number;
+  readonly resetAfterMs: number;
+  readonly retryAfterMs: null;
+}
+
+export interface RateLimitExceededDecision extends RateLimitDecisionBase {
+  readonly allowed: false;
+  readonly reason: 'limit-exceeded';
+  readonly remaining: 0;
+  readonly resetAfterMs: number;
+  readonly retryAfterMs: number;
+}
+
+export type RateLimitFailureReason = 'store-failure' | 'capacity-exceeded';
+export type RateLimitUnavailableReason =
+  'missing-identity' | 'invalid-identity' | RateLimitFailureReason;
+
+export interface RateLimitFailOpenDecision extends RateLimitDecisionBase {
+  readonly allowed: true;
+  readonly reason: RateLimitFailureReason;
+  readonly remaining: null;
+  readonly resetAfterMs: null;
+  readonly retryAfterMs: null;
+}
+
+export interface RateLimitUnavailableRejectedDecision extends RateLimitDecisionBase {
+  readonly allowed: false;
+  readonly reason: RateLimitUnavailableReason;
+  readonly remaining: null;
+  readonly resetAfterMs: null;
+  readonly retryAfterMs: null;
+}
+
+export type RateLimitUnavailableDecision =
+  RateLimitFailOpenDecision | RateLimitUnavailableRejectedDecision;
+
+export type RateLimitDecision =
+  | RateLimitAllowedDecision
+  | RateLimitExceededDecision
+  | RateLimitUnavailableDecision;
+
+export interface RateLimiter {
+  /** Resolves after one atomic store consumption or a defensive rejection. */
+  readonly consume: (identity: unknown) => Promise<RateLimitDecision>;
+}
+
+const MAX_IDENTITY_LENGTH = 256;
+const DEFAULT_MISSING_IDENTITY: MissingIdentityPolicy = Object.freeze({
+  behavior: 'reject',
+});
+
+/** Creates a framework-independent, anchored fixed-window rate limiter. */
+export function createRateLimiter(
+  options: CreateRateLimiterOptions,
+): RateLimiter {
+  const configuration = validateOptions(options);
+  let greatestNowMs = Number.NEGATIVE_INFINITY;
+
+  return Object.freeze({
+    async consume(identity: unknown): Promise<RateLimitDecision> {
+      const resolvedIdentity = resolveIdentity(
+        identity,
+        configuration.missingIdentity,
+      );
+      if (!resolvedIdentity.valid) {
+        return rejectedUnavailableDecision(
+          resolvedIdentity.reason,
+          configuration.policy.max,
+        );
+      }
+
+      const clockReading = readClock(configuration.clock);
+      greatestNowMs = Math.max(greatestNowMs, clockReading);
+      const nowMs = greatestNowMs;
+
+      let storeResult: RateLimitStoreResult;
+      try {
+        storeResult = await configuration.store.consume(
+          resolvedIdentity.identity,
+          configuration.policy,
+          nowMs,
+        );
+        validateStoreResult(storeResult, configuration.policy, nowMs);
+      } catch (error: unknown) {
+        const reason =
+          error instanceof RateLimitCapacityError
+            ? 'capacity-exceeded'
+            : 'store-failure';
+        return configuration.failureMode === 'open'
+          ? failOpenDecision(reason, configuration.policy.max)
+          : rejectedUnavailableDecision(reason, configuration.policy.max);
+      }
+
+      const resetAfterMs = storeResult.resetAtMs - nowMs;
+      if (!storeResult.consumed) {
+        return Object.freeze({
+          allowed: false,
+          reason: 'limit-exceeded',
+          limit: configuration.policy.max,
+          remaining: 0,
+          resetAfterMs,
+          retryAfterMs: resetAfterMs,
+        });
+      }
+
+      return Object.freeze({
+        allowed: true,
+        reason: 'within-limit',
+        limit: configuration.policy.max,
+        remaining: configuration.policy.max - storeResult.count,
+        resetAfterMs,
+        retryAfterMs: null,
+      });
+    },
+  });
+}
+
+interface ValidatedOptions {
+  readonly policy: RateLimitPolicy;
+  readonly store: RateLimitStore;
+  readonly clock: MonotonicClock;
+  readonly missingIdentity: MissingIdentityPolicy;
+  readonly failureMode: RateLimitFailureMode;
+}
+
+function validateOptions(options: CreateRateLimiterOptions): ValidatedOptions {
+  if (
+    typeof options !== 'object' ||
+    options === null ||
+    Array.isArray(options)
+  ) {
+    throw new TypeError('Rate limiter options must be an object');
+  }
+
+  assertRateLimitPolicy(options);
+
+  const store = options.store ?? new MemoryRateLimitStore();
+  if (
+    (typeof store !== 'object' && typeof store !== 'function') ||
+    store === null ||
+    typeof store.consume !== 'function'
+  ) {
+    throw new TypeError('Rate limit store must provide a consume function');
+  }
+
+  const clock = options.clock ?? (() => performance.now());
+  if (typeof clock !== 'function') {
+    throw new TypeError('Rate limiter clock must be a function');
+  }
+
+  const missingIdentity = options.missingIdentity ?? DEFAULT_MISSING_IDENTITY;
+  validateMissingIdentityPolicy(missingIdentity);
+
+  const failureMode = options.failureMode ?? 'closed';
+  if (failureMode !== 'closed' && failureMode !== 'open') {
+    throw new TypeError('Rate limit failureMode must be closed or open');
+  }
+
+  return Object.freeze({
+    policy: Object.freeze({ max: options.max, windowMs: options.windowMs }),
+    store,
+    clock,
+    missingIdentity,
+    failureMode,
+  });
+}
+
+function validateMissingIdentityPolicy(policy: MissingIdentityPolicy): void {
+  if (typeof policy !== 'object' || policy === null || Array.isArray(policy)) {
+    throw new TypeError('Missing identity policy must be an object');
+  }
+
+  if (policy.behavior === 'reject') return;
+
+  if (policy.behavior === 'use-shared') {
+    const identity = validateIdentity(policy.identity);
+    if (!identity.valid) {
+      throw new TypeError('Shared rate limit identity must be valid');
+    }
+    return;
+  }
+
+  throw new TypeError('Missing identity behavior must be reject or use-shared');
+}
+
+function resolveIdentity(
+  identity: unknown,
+  missingPolicy: MissingIdentityPolicy,
+): IdentityValidation {
+  if (identity === undefined || identity === null || identity === '') {
+    if (missingPolicy.behavior === 'use-shared') {
+      return { valid: true, identity: missingPolicy.identity };
+    }
+    return { valid: false, reason: 'missing-identity' };
+  }
+
+  return validateIdentity(identity);
+}
+
+type IdentityValidation =
+  | { readonly valid: true; readonly identity: string }
+  | {
+      readonly valid: false;
+      readonly reason: 'missing-identity' | 'invalid-identity';
+    };
+
+function validateIdentity(identity: unknown): IdentityValidation {
+  if (
+    typeof identity !== 'string' ||
+    identity.length === 0 ||
+    identity.length > MAX_IDENTITY_LENGTH ||
+    identity.trim() !== identity ||
+    hasControlCharacter(identity)
+  ) {
+    return { valid: false, reason: 'invalid-identity' };
+  }
+
+  return { valid: true, identity };
+}
+
+function hasControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code <= 31 || code === 127) return true;
+  }
+  return false;
+}
+
+function readClock(clock: MonotonicClock): number {
+  const reading: unknown = clock();
+  if (typeof reading !== 'number' || !Number.isFinite(reading)) {
+    throw new TypeError('Rate limiter clock must return a finite number');
+  }
+  return reading;
+}
+
+function validateStoreResult(
+  result: RateLimitStoreResult,
+  policy: RateLimitPolicy,
+  nowMs: number,
+): void {
+  if (typeof result !== 'object' || result === null || Array.isArray(result)) {
+    throw new TypeError('Rate limit store must return an object');
+  }
+
+  if (typeof result.consumed !== 'boolean') {
+    throw new TypeError('Rate limit store consumed must be a boolean');
+  }
+
+  if (
+    !Number.isSafeInteger(result.count) ||
+    result.count < 1 ||
+    result.count > policy.max ||
+    (!result.consumed && result.count !== policy.max)
+  ) {
+    throw new TypeError('Rate limit store count is invalid');
+  }
+
+  const maximumResetAtMs = nowMs + policy.windowMs;
+  if (
+    typeof result.resetAtMs !== 'number' ||
+    !Number.isFinite(result.resetAtMs) ||
+    result.resetAtMs <= nowMs ||
+    result.resetAtMs > maximumResetAtMs
+  ) {
+    throw new TypeError('Rate limit store reset boundary is invalid');
+  }
+}
+
+function failOpenDecision(
+  reason: RateLimitFailureReason,
+  limit: number,
+): RateLimitFailOpenDecision {
+  return Object.freeze({
+    allowed: true,
+    reason,
+    limit,
+    remaining: null,
+    resetAfterMs: null,
+    retryAfterMs: null,
+  });
+}
+
+function rejectedUnavailableDecision(
+  reason: RateLimitUnavailableReason,
+  limit: number,
+): RateLimitUnavailableRejectedDecision {
+  return Object.freeze({
+    allowed: false,
+    reason,
+    limit,
+    remaining: null,
+    resetAfterMs: null,
+    retryAfterMs: null,
+  });
+}

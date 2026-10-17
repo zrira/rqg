@@ -11,6 +11,21 @@ export {
   type RateLimitStoreResult,
 } from './rate-limit.js';
 export {
+  createRateLimiter,
+  type CreateRateLimiterOptions,
+  type MissingIdentityPolicy,
+  type RateLimitAllowedDecision,
+  type RateLimitDecision,
+  type RateLimitExceededDecision,
+  type RateLimitFailOpenDecision,
+  type RateLimitFailureMode,
+  type RateLimitFailureReason,
+  type RateLimiter,
+  type RateLimitUnavailableDecision,
+  type RateLimitUnavailableReason,
+  type RateLimitUnavailableRejectedDecision,
+} from './fixed-window-rate-limiter.js';
+export {
   createLogRecord,
   writeLog,
   type JsonObject,
