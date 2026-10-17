@@ -7,3 +7,9 @@ export {
   type RequestIdGenerator,
   type ResolveRequestIdOptions,
 } from './request-id.js';
+export {
+  createTimer,
+  type CreateTimerOptions,
+  type MonotonicClock,
+  type OperationTimer,
+} from './timer.js';
