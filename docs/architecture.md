@@ -67,6 +67,18 @@ Windows are anchored to an identity's first consumption and expire when `nowMs >
 
 Identity extraction belongs to adapters and applications. Core accepts an opaque validated string, rejects missing identity by default, and never reads forwarding headers. Storage failure is closed by default, with explicit opt-in fail-open behavior. Memory capacity is bounded, expired entries are lazily removed, and active entries are never evicted to admit attacker-controlled identities.
 
+## Express adapter
+
+`@rqg/express` translates Express 5 and Node.js HTTP behavior into existing core calls. It depends inward on `@rqg/core`; core has no Express import.
+
+Standalone factories cover request identification, lifecycle observability, and rate limiting. `rqg()` composes those same factories in request-ID, observability, rate-limit order so terminal rate-limit responses are identified and observed. There is no parallel combined implementation.
+
+Request state is attached to the response under a module-private symbol and exposed through `getRequestId()`. This avoids global Express type augmentation, `res.locals` collisions, and process-global mutable state.
+
+The adapter owns HTTP-only policy: validated header names, lifecycle event listeners, safe route-template fallback, response status mapping, and rate-limit headers. Core continues to own UUID trust, timing, log records, fixed-window decisions, and storage.
+
+Express remains a peer dependency. Type declarations are compiled against `@types/express`, while consuming TypeScript applications install the Express types appropriate to their framework version.
+
 ## Build and module model
 
 The repository uses npm workspaces rather than an additional monorepo orchestrator. TypeScript project references express build order and package boundaries. Packages compile as ESM with `NodeNext` module resolution and publish JavaScript, source maps, and declarations from `dist/`.
