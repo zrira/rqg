@@ -5,3 +5,11 @@ export {
   requestObservability,
   type RequestObservabilityOptions,
 } from './request-observability.js';
+export {
+  rateLimit,
+  type ExpressIdentityResolver,
+  type ExpressRateLimitFailure,
+  type ExpressRateLimitFailureReason,
+  type ExpressRateLimitIdentity,
+  type RateLimitMiddlewareOptions,
+} from './rate-limit.js';
