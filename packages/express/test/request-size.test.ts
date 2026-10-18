@@ -16,7 +16,8 @@ function createLimitedApp() {
   app.post('/', ((_request, response) => {
     response.sendStatus(204);
   }) satisfies RequestHandler);
-  app.use(((error: unknown, _request, response, _next) => {
+  app.use(((error: unknown, _request, response, next) => {
+    void next;
     const status = readStatus(error);
     response.sendStatus(status);
   }) satisfies ErrorRequestHandler);

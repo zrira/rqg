@@ -62,6 +62,40 @@ describe('requestId', () => {
     });
   });
 
+  it('rejects repeated header fields regardless of casing', async () => {
+    await withServer(createApp({ acceptIncoming: true }), async (origin) => {
+      const response = await get(origin, '/', [
+        'Host',
+        new URL(origin).host,
+        'X-Request-Id',
+        INCOMING_ID,
+        'x-request-id',
+        INCOMING_ID,
+      ]);
+
+      expect(response.headers['x-request-id']).toBe(GENERATED_ID);
+    });
+  });
+
+  it.each(['x'.repeat(1_024), `018f1f70-7b8a-4f9f-8ad4-5a6f8872a62é`])(
+    'replaces oversized or Unicode input',
+    async (value) => {
+      await withServer(createApp({ acceptIncoming: true }), async (origin) => {
+        const response = await get(origin, '/', { 'x-request-id': value });
+
+        expect(response.headers['x-request-id']).toBe(GENERATED_ID);
+      });
+    },
+  );
+
+  it('relies on Node to reject CRLF before middleware execution', async () => {
+    await withServer(createApp({ acceptIncoming: true }), async (origin) => {
+      await expect(
+        get(origin, '/', { 'x-request-id': `${INCOMING_ID}\r\nforged: yes` }),
+      ).rejects.toThrow();
+    });
+  });
+
   it('supports a custom validated header name', async () => {
     await withServer(
       createApp({ headerName: 'x-correlation-id' }),
