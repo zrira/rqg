@@ -80,8 +80,13 @@ if (
   throw new TypeError('PORT must be an integer from 0 to 65535');
 }
 
-app.listen(configuredPort, () => {
+const server = app.listen(configuredPort, () => {
+  const address = server.address();
+  const listeningPort =
+    typeof address === 'object' && address !== null
+      ? address.port
+      : configuredPort;
   process.stdout.write(
-    `rqg Express example listening on port ${configuredPort}\n`,
+    `rqg Express example listening on port ${listeningPort}\n`,
   );
 });
