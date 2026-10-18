@@ -7,5 +7,6 @@
     "noEmit": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts"],
+  "references": [{ "path": "../../core" }, { "path": ".." }]
 }
