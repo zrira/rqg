@@ -32,6 +32,10 @@ Fail-closed is the default. Storage, capacity, and identity-resolver failures be
 
 Monitor `onFailure`, HTTP 503 rates, capacity exhaustion, and store latency. Do not expose collaborator exceptions to clients.
 
+## Configuration
+
+Public factories reject malformed runtime configuration rather than coercing values. Nest applications must register one root `RqgModule`. Distinct registrations are detected per request and fail closed with a generic HTTP 500; this avoids ambiguous multiple guards without process-global state leaking across independent applications. Identical repeated imports are deduplicated, but should not be used as a registration strategy.
+
 ## Resource bounds
 
 `MemoryRateLimitStore` retains at most 10,000 active keys by default. It never evicts active entries to admit a new identity. At capacity it cleans only when an expiry can exist and otherwise fails predictably. Periodic cleanup is lazy and request-driven; there are no timers.

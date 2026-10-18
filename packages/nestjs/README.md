@@ -21,7 +21,7 @@ NestJS 11 integration for `@rqg/core`, tested with the Express platform adapter.
 export class AppModule {}
 ```
 
-`forRootAsync({ imports, inject, useFactory })` is also supported. Register exactly one `forRoot()` or `forRootAsync()` call in the root application module. Conflicting registrations can create multiple global guards and are unsupported. This contract avoids process-global registration state and keeps separate Nest applications isolated.
+`forRootAsync({ imports, inject, useFactory })` is also supported. Register exactly one `forRoot()` or `forRootAsync()` call in the root application module. If distinct registrations become active, rqg fails closed with HTTP 500 rather than applying ambiguous global guards. Detection uses request-local state so separate Nest applications remain isolated.
 
 ## Controller APIs
 

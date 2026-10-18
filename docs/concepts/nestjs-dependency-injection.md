@@ -23,7 +23,7 @@ export class AppModule {}
 
 Nest modules group providers and define visibility. Dynamic modules add providers based on registration arguments. rqg uses symbol injection tokens so application class names cannot collide with internal configuration providers.
 
-`RqgModule` should be registered once at the application root. Repeated imports with the same options are tested and do not double-consume quota, but conflicting root configurations are intentionally unsupported.
+`RqgModule` should be registered once at the application root. Repeated imports with the same options object are tested and do not double-consume quota. Distinct active registrations are detected through request-local state and fail closed with HTTP 500 without exposing configuration details. Detection cannot safely use process-global state because independent Nest applications may coexist, so the error occurs when a request activates both global guards rather than during static module construction.
 
 ## Asynchronous configuration
 
