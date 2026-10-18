@@ -72,9 +72,20 @@ app.use(
     process.stderr.write(
       `${error instanceof Error ? error.message : 'Unknown error'}\n`,
     );
-    response.status(500).json({ error: 'Internal Server Error' });
+    const statusCode = safeErrorStatus(error);
+    response.status(statusCode).json({
+      error: statusCode === 413 ? 'Payload Too Large' : 'Internal Server Error',
+    });
   },
 );
+
+function safeErrorStatus(error: unknown): number {
+  if (typeof error !== 'object' || error === null || !('status' in error)) {
+    return 500;
+  }
+  const status: unknown = error.status;
+  return Number.isInteger(status) && status === 413 ? status : 500;
+}
 
 const configuredPort = Number(process.env.PORT ?? 3000);
 if (
