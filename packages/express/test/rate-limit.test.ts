@@ -43,6 +43,24 @@ describe('rateLimit', () => {
     });
   });
 
+  it('does not consume twice when the same middleware is registered twice', async () => {
+    const app = express();
+    const middleware = rateLimit({
+      max: 2,
+      windowMs: 10_000,
+      clock: () => 0,
+      identity: () => 'client',
+    });
+    app.use(middleware, middleware);
+    app.get('/', (_request, response) => response.send('ok'));
+
+    await withServer(app, async (origin) => {
+      expect((await get(origin)).statusCode).toBe(200);
+      expect((await get(origin)).statusCode).toBe(200);
+      expect((await get(origin)).statusCode).toBe(429);
+    });
+  });
+
   it('returns 429 with ceiling-rounded Retry-After above the limit', async () => {
     const { app, onHandled } = createApp({
       max: 1,

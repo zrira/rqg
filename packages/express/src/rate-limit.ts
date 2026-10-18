@@ -26,12 +26,24 @@ export interface RateLimitMiddlewareOptions extends CreateRateLimiterOptions {
   readonly onFailure?: (failure: ExpressRateLimitFailure) => void;
 }
 
+const APPLIED_RATE_LIMITERS = Symbol('rqg.appliedRateLimiters');
+
+interface RateLimitResponse extends Response {
+  [APPLIED_RATE_LIMITERS]?: Set<object>;
+}
+
 /** Applies a core rate limiter and translates its decisions into HTTP behavior. */
 export function rateLimit(options: RateLimitMiddlewareOptions): RequestHandler {
   validateAdapterOptions(options);
   const limiter = createRateLimiter(options);
+  const registration = Object.freeze({});
 
   return async (request, response, next): Promise<void> => {
+    if (!claimRegistration(response, registration)) {
+      next();
+      return;
+    }
+
     let identity: unknown;
     try {
       identity = await options.identity(request);
@@ -49,6 +61,16 @@ export function rateLimit(options: RateLimitMiddlewareOptions): RequestHandler {
     const decision = await limiter.consume(identity);
     handleDecision(decision, response, next, options);
   };
+}
+
+function claimRegistration(response: Response, registration: object): boolean {
+  const target = response as RateLimitResponse;
+  const registrations =
+    target[APPLIED_RATE_LIMITERS] ??
+    (target[APPLIED_RATE_LIMITERS] = new Set());
+  if (registrations.has(registration)) return false;
+  registrations.add(registration);
+  return true;
 }
 
 function validateAdapterOptions(options: RateLimitMiddlewareOptions): void {
