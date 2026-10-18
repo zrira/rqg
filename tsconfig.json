@@ -4,6 +4,7 @@
     { "path": "./packages/core" },
     { "path": "./packages/express" },
     { "path": "./packages/nestjs" },
-    { "path": "./examples/express-app" }
+    { "path": "./examples/express-app" },
+    { "path": "./examples/nestjs-app" }
   ]
 }
