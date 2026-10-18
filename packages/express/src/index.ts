@@ -5,6 +5,7 @@ export {
   requestObservability,
   type RequestObservabilityOptions,
 } from './request-observability.js';
+export { rqg, type RqgMiddlewareOptions } from './rqg.js';
 export {
   rateLimit,
   type ExpressIdentityResolver,
