@@ -79,6 +79,16 @@ The adapter owns HTTP-only policy: validated header names, lifecycle event liste
 
 Express remains a peer dependency. Type declarations are compiled against `@types/express`, while consuming TypeScript applications install the Express types appropriate to their framework version.
 
+## NestJS adapter
+
+`@rqg/nestjs` is a DI-managed adapter over core. `RqgModule` registers singleton configuration, middleware, guard, and limiter-registry providers. Request-specific state remains attached to the Node response under a package-private symbol rather than creating request-scoped providers.
+
+Middleware owns request identification and transport lifecycle observation because it runs before guards and pipes. `RqgRateLimitGuard` owns quota enforcement and Nest HTTP exceptions. RxJS interceptor completion is intentionally not used as a transport-completion signal.
+
+Rate-limit metadata follows method, controller, then global precedence. A registry caches core limiters and wraps the one shared store with global/controller/method namespaces, preventing incompatible policies from colliding.
+
+Phase 5 supports and tests NestJS 11's Express platform. Fastify is not claimed. Applications select either the NestJS or Express rqg adapter for a request pipeline; cross-package private context coupling was rejected.
+
 ## Build and module model
 
 The repository uses npm workspaces rather than an additional monorepo orchestrator. TypeScript project references express build order and package boundaries. Packages compile as ESM with `NodeNext` module resolution and publish JavaScript, source maps, and declarations from `dist/`.
