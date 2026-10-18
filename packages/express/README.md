@@ -46,7 +46,7 @@ app.use(
 
 Exceeded requests receive HTTP 429, `Retry-After`, `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`. Missing identity receives 400; unavailable protection in fail-closed mode receives 503 without misleading quota headers.
 
-Configure Express `trust proxy` correctly before treating `req.ip` as an original-client identity.
+Configure Express `trust proxy` correctly before treating `req.ip` as an original-client identity. Do not log or return raw identity values such as API keys.
 
 ## Combined middleware
 
@@ -66,9 +66,24 @@ app.use(
 
 Execution order is request ID, observability, then rate limiting. Every feature can be omitted or set to `false`.
 
+Registering the same returned rate-limit middleware object more than once consumes once per request. Separately calling `rateLimit()` or `rqg()` constructs independent policies and can intentionally consume multiple quotas.
+
+## Request body limits
+
+rqg does not read or buffer request streams. Configure each parser before affected routes:
+
+```ts
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: false, limit: '100kb' }));
+```
+
+These parser limits handle declared and chunked bodies. Configure multipart and streaming limits in their respective middleware; checking `Content-Length` alone is not secure enforcement.
+
 ## Documentation
 
 - [Express middleware](../../docs/concepts/express-middleware.md)
 - [Node.js HTTP lifecycle](../../docs/concepts/node-http-lifecycle.md)
 - [Reverse proxies and client identity](../../docs/concepts/reverse-proxies-and-client-identity.md)
+- [Request size limits](../../docs/concepts/http-request-size-limits.md)
+- [Deployment security](../../docs/deployment-security.md)
 - [Runnable Express example](../../examples/express-app)

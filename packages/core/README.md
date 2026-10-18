@@ -88,7 +88,7 @@ if (!decision.allowed && decision.reason === 'limit-exceeded') {
 
 Windows are anchored to each identity's first consumption. Missing identities and storage failures are rejected by default. Core returns structured decisions and never sends HTTP responses or reads proxy headers.
 
-The memory store is bounded, lazily cleans expired entries, and never evicts an active entry to admit a new identity. Its state and atomicity are local to one store instance and Node.js event-loop context.
+The memory store defaults to 10,000 active entries, lazily cleans expired entries, and never evicts an active entry to admit a new identity. It skips futile capacity scans until the earliest active reset boundary. Its state and atomicity are local to one store instance and Node.js event-loop context; processes and replicas do not share quota.
 
 ## Guides
 
@@ -98,3 +98,5 @@ The memory store is bounded, lazily cleans expired entries, and never evicts an 
 - [Fixed-window rate limiting](../../docs/concepts/fixed-window-rate-limiting.md)
 - [Rate-limit storage](../../docs/concepts/rate-limit-storage.md)
 - [Concurrency and atomicity](../../docs/concepts/concurrency-and-atomicity.md)
+- [Resource exhaustion](../../docs/concepts/resource-exhaustion.md)
+- [Security model](../../docs/security.md)

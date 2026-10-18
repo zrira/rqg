@@ -21,4 +21,4 @@ curl -i http://127.0.0.1:3000/health
 curl -i http://127.0.0.1:3000/error
 ```
 
-The global policy allows five requests per minute per direct client IP. `/limited` has an isolated two-request policy, while `/health` skips rate limiting. The example uses Nest's Express platform with proxy trust left at its secure default; configure proxy trust explicitly before relying on forwarded client addresses.
+The global policy allows five requests per minute per direct client IP. `/limited` has an isolated two-request policy, while `/health` skips rate limiting. Express-backed JSON and URL-encoded parsers enforce a 100 KB limit; multipart and streaming endpoints would require separate limits. The example leaves proxy trust at its secure default; configure it explicitly before relying on forwarded client addresses.

@@ -2,7 +2,7 @@
 
 A lightweight, modular HTTP request protection toolkit for Node.js, Express, and NestJS.
 
-> **Status:** early development. Phase 5 NestJS 11 integration is available in `@rqg/nestjs`.
+> **Status:** early development. Phase 6 security and reliability hardening is complete.
 
 ## Packages
 
@@ -39,10 +39,10 @@ Build artifacts are written to each package's `dist/` directory and are not comm
 3. ✅ Fixed-window rate limiting
 4. ✅ Express integration
 5. ✅ NestJS integration
-6. Security hardening
+6. ✅ Security hardening
 7. Packaging and publishing verification
 
-Implementation notes live in [`docs/concepts`](docs/concepts), including the [foundation](docs/concepts/phase-0-foundation.md), [request identification](docs/concepts/request-identification.md), [operation timing](docs/concepts/operation-timing.md), [structured logging](docs/concepts/structured-logging.md), [fixed-window rate limiting](docs/concepts/fixed-window-rate-limiting.md), [Express middleware](docs/concepts/express-middleware.md), and [NestJS dependency injection](docs/concepts/nestjs-dependency-injection.md).
+Read the [security model](docs/security.md), [deployment security guide](docs/deployment-security.md), and implementation notes in [`docs/concepts`](docs/concepts). rqg is an application-layer control; it is not a WAF, authentication system, distributed limiter, body parser, or complete DDoS defense.
 
 ## License
 

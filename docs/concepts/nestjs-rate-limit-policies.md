@@ -25,7 +25,7 @@ The Phase 3 memory store rejects one active key used with conflicting policies. 
 
 The registry cache key also includes `max` and `windowMs`. Core limiter and store objects are created once per active policy scope, not per request.
 
-Controller and method scope names use Nest controller and handler names. Applications using a future distributed store should ensure those names are stable and unique across deployed code. Distributed storage remains outside the current implementation.
+Controller and method scopes use application-local constructor and handler object identity, preventing distinct same-named classes from sharing counters. Store keys use length-framed namespaces so identity delimiters cannot collide with policy boundaries. These generated scope IDs are process-local; using a distributed store for Nest route policies is not currently supported.
 
 ## Examples
 

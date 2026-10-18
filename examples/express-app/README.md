@@ -20,6 +20,6 @@ curl -i http://localhost:3000/combined
 curl -i http://localhost:3000/error
 ```
 
-Repeated calls to the protected endpoints return HTTP 429 after five requests per minute. The application writes structured completion records to stdout and uses Express error-handling middleware for rejected route promises.
+Repeated calls to the protected endpoints return HTTP 429 after five requests per minute. The application writes structured completion records to stdout and uses Express error-handling middleware for rejected route promises. JSON and URL-encoded parsers enforce a 100 KB limit; multipart and streaming endpoints would require separate limits.
 
 The example deliberately leaves Express `trust proxy` disabled. If it is deployed behind a reverse proxy, configure an exact trust policy before using `req.ip`; never trust `X-Forwarded-For` unconditionally.

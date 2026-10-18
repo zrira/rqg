@@ -65,13 +65,13 @@ Phase 3 separates rate limiting into policy, algorithm, and storage:
 
 Windows are anchored to an identity's first consumption and expire when `nowMs >= resetAtMs`. Counters saturate at the policy maximum. The in-memory transition is synchronous and atomic only within one event-loop context and store instance; it does not coordinate workers, processes, or deployments.
 
-Identity extraction belongs to adapters and applications. Core accepts an opaque validated string, rejects missing identity by default, and never reads forwarding headers. Storage failure is closed by default, with explicit opt-in fail-open behavior. Memory capacity is bounded, expired entries are lazily removed, and active entries are never evicted to admit attacker-controlled identities.
+Identity extraction belongs to adapters and applications. Core accepts an opaque validated string, rejects missing identity by default, and never reads forwarding headers. Storage failure is closed by default, with explicit opt-in fail-open behavior. Memory capacity is bounded, expired entries are lazily removed, and active entries are never evicted to admit attacker-controlled identities. The store tracks its earliest reset boundary so capacity pressure does not trigger a futile full scan before any entry can expire.
 
 ## Express adapter
 
 `@rqg/express` translates Express 5 and Node.js HTTP behavior into existing core calls. It depends inward on `@rqg/core`; core has no Express import.
 
-Standalone factories cover request identification, lifecycle observability, and rate limiting. `rqg()` composes those same factories in request-ID, observability, rate-limit order so terminal rate-limit responses are identified and observed. There is no parallel combined implementation.
+Standalone factories cover request identification, lifecycle observability, and rate limiting. `rqg()` composes those same factories in request-ID, observability, rate-limit order so terminal rate-limit responses are identified and observed. There is no parallel combined implementation. Registering the same rate-limit middleware object repeatedly consumes once per request; separately constructed limiters remain independent policies.
 
 Request state is attached to the response under a module-private symbol and exposed through `getRequestId()`. This avoids global Express type augmentation, `res.locals` collisions, and process-global mutable state.
 
@@ -85,9 +85,17 @@ Express remains a peer dependency. Type declarations are compiled against `@type
 
 Middleware owns request identification and transport lifecycle observation because it runs before guards and pipes. `RqgRateLimitGuard` owns quota enforcement and Nest HTTP exceptions. RxJS interceptor completion is intentionally not used as a transport-completion signal.
 
-Rate-limit metadata follows method, controller, then global precedence. A registry caches core limiters and wraps the one shared store with global/controller/method namespaces, preventing incompatible policies from colliding.
+Rate-limit metadata follows method, controller, then global precedence. A registry caches core limiters and wraps the one shared store with global/controller/method namespaces, preventing incompatible policies from colliding. Application-local object identity distinguishes same-named controllers and handlers, while length-framed keys prevent namespace/identity delimiter collisions.
 
 Phase 5 supports and tests NestJS 11's Express platform. Fastify is not claimed. Applications select either the NestJS or Express rqg adapter for a request pipeline; cross-package private context coupling was rejected.
+
+## Security boundaries
+
+Node.js owns HTTP wire parsing. Reverse proxies own trusted forwarding metadata and should reject malformed or oversized traffic before Node. Express or NestJS parsers own request body consumption. rqg validates its configuration, generated/request-controlled values, and collaborator outputs without introducing a second HTTP or body parser.
+
+Parser-native body limits protect JSON and URL-encoded requests, including chunked input; multipart and streaming handlers require format-specific limits. The in-memory limiter cannot coordinate processes or replicas and does not prevent bandwidth, socket, TLS, or proxy exhaustion.
+
+See [Security](security.md), [Deployment security](deployment-security.md), and [HTTP request size limits](concepts/http-request-size-limits.md).
 
 ## Build and module model
 
