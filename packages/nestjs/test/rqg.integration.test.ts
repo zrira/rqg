@@ -119,6 +119,22 @@ class SkippedController {
   }
 }
 
+function createCollisionController(path: string): Type<unknown> {
+  @RateLimit({ max: 1, windowMs: 1_000 })
+  @Controller(path)
+  class CollisionController {
+    @Get()
+    handle() {
+      return { ok: true };
+    }
+  }
+
+  return CollisionController;
+}
+
+const FirstCollisionController = createCollisionController('collision-first');
+const SecondCollisionController = createCollisionController('collision-second');
+
 async function createApplication(
   options: RqgModuleOptions,
   controllers: readonly Type<unknown>[] = [BasicController],
@@ -343,6 +359,36 @@ describe('RqgModule integration', () => {
       200,
     );
     expect((await get(origin, '/skipped/protected', headers)).statusCode).toBe(
+      429,
+    );
+  });
+
+  it('isolates distinct controllers with identical runtime names', async () => {
+    const app = await createApplication(
+      {
+        rateLimit: {
+          global: false,
+          max: 10,
+          windowMs: 1_000,
+          clock: () => 0,
+          identity,
+        },
+      },
+      [FirstCollisionController, SecondCollisionController],
+    );
+    const origin = await listen(app);
+    const headers = { 'x-client-id': 'same-client' };
+
+    expect((await get(origin, '/collision-first', headers)).statusCode).toBe(
+      200,
+    );
+    expect((await get(origin, '/collision-second', headers)).statusCode).toBe(
+      200,
+    );
+    expect((await get(origin, '/collision-first', headers)).statusCode).toBe(
+      429,
+    );
+    expect((await get(origin, '/collision-second', headers)).statusCode).toBe(
       429,
     );
   });

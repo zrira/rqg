@@ -15,6 +15,8 @@ export class RqgRateLimitRegistry {
   readonly #configuration: NestRateLimitOptions | undefined;
   readonly #store: RateLimitStore | undefined;
   readonly #limiters = new Map<string, RateLimiter>();
+  readonly #scopeIds = new WeakMap<object, number>();
+  #nextScopeId = 1;
 
   constructor(@Inject(RQG_MODULE_OPTIONS) options: RqgModuleOptions) {
     const configured = options.rateLimit;
@@ -44,14 +46,16 @@ export class RqgRateLimitRegistry {
     return this.#configuration;
   }
 
-  getLimiter(scope: string, policy: RateLimitPolicy): RateLimiter {
+  getLimiter(scope: string | object, policy: RateLimitPolicy): RateLimiter {
     const configuration = this.#configuration;
     const store = this.#store;
     if (configuration === undefined || store === undefined) {
       throw new Error('Rqg rate limiting is not configured');
     }
 
-    const key = `${scope}:${policy.max}:${policy.windowMs}`;
+    const scopeKey =
+      typeof scope === 'string' ? scope : `object:${this.#getScopeId(scope)}`;
+    const key = `${scopeKey}:${policy.max}:${policy.windowMs}`;
     const existing = this.#limiters.get(key);
     if (existing !== undefined) return existing;
 
@@ -73,6 +77,16 @@ export class RqgRateLimitRegistry {
     this.#limiters.set(key, limiter);
     return limiter;
   }
+
+  #getScopeId(scope: object): number {
+    const existing = this.#scopeIds.get(scope);
+    if (existing !== undefined) return existing;
+
+    const id = this.#nextScopeId;
+    this.#nextScopeId += 1;
+    this.#scopeIds.set(scope, id);
+    return id;
+  }
 }
 
 class NamespacedStore implements RateLimitStore {
@@ -86,6 +100,10 @@ class NamespacedStore implements RateLimitStore {
     policy: RateLimitPolicy,
     nowMs: number,
   ): ReturnType<RateLimitStore['consume']> {
-    return this.store.consume(`${this.namespace}:${key}`, policy, nowMs);
+    return this.store.consume(
+      `${this.namespace.length}:${this.namespace}:${key.length}:${key}`,
+      policy,
+      nowMs,
+    );
   }
 }

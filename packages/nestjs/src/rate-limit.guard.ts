@@ -62,17 +62,16 @@ export class RqgRateLimitGuard implements CanActivate {
 
   private selectPolicy(
     context: ExecutionContext,
-  ): { readonly scope: string; readonly policy: RateLimitPolicy } | undefined {
+  ):
+    | { readonly scope: string | object; readonly policy: RateLimitPolicy }
+    | undefined {
     const method = this.reflector.get<RateLimitMetadata | undefined>(
       RQG_RATE_LIMIT_METADATA,
       context.getHandler(),
     );
     if (method !== undefined) {
       if (method.kind === 'skip') return undefined;
-      return {
-        scope: `method:${context.getClass().name}.${context.getHandler().name}`,
-        policy: method.policy,
-      };
+      return { scope: context.getHandler(), policy: method.policy };
     }
 
     const controller = this.reflector.get<RateLimitMetadata | undefined>(
@@ -81,10 +80,7 @@ export class RqgRateLimitGuard implements CanActivate {
     );
     if (controller !== undefined) {
       if (controller.kind === 'skip') return undefined;
-      return {
-        scope: `controller:${context.getClass().name}`,
-        policy: controller.policy,
-      };
+      return { scope: context.getClass(), policy: controller.policy };
     }
 
     const configured = this.options.rateLimit;
