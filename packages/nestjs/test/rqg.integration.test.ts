@@ -535,6 +535,28 @@ describe('RqgModule configuration', () => {
     expect((await get(origin, '/async')).statusCode).toBe(429);
   });
 
+  it('fails closed when conflicting root registrations are active', async () => {
+    const shared = {
+      windowMs: 100,
+      clock: () => 0,
+      identity: () => 'client',
+    };
+    const testingModule = await Test.createTestingModule({
+      imports: [
+        RqgModule.forRoot({ rateLimit: { ...shared, max: 1 } }),
+        RqgModule.forRoot({ rateLimit: { ...shared, max: 2 } }),
+      ],
+      controllers: [AsyncController],
+    }).compile();
+    const app = testingModule.createNestApplication();
+    applications.push(app);
+    const origin = await listen(app);
+
+    const response = await get(origin, '/async');
+    expect(response.statusCode).toBe(500);
+    expect(response.body).not.toContain('registered exactly once');
+  });
+
   it('isolates configuration and in-memory state between applications', async () => {
     const options: RqgModuleOptions = {
       rateLimit: {

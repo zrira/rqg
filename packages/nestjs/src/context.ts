@@ -3,6 +3,7 @@ import { createRequestId, type RequestId as CoreRequestId } from '@rqg/core';
 import type { NestHttpResponse } from './types.js';
 
 const contextKey = Symbol('rqg.nest-context');
+const registrationKey = Symbol('rqg.nest-registration');
 
 interface NestRequestContext {
   readonly requestId: CoreRequestId;
@@ -11,7 +12,27 @@ interface NestRequestContext {
 
 type ContextResponse = NestHttpResponse & {
   [contextKey]?: NestRequestContext;
+  [registrationKey]?: object;
 };
+
+export function assertSingleRegistration(
+  response: NestHttpResponse,
+  registration: object,
+): void {
+  const target = response as ContextResponse;
+  const existing = target[registrationKey];
+  if (existing !== undefined && existing !== registration) {
+    throw new Error('RqgModule must be registered exactly once');
+  }
+  if (existing === undefined) {
+    Object.defineProperty(target, registrationKey, {
+      configurable: false,
+      enumerable: false,
+      value: registration,
+      writable: false,
+    });
+  }
+}
 
 export function getNestRequestId(
   response: NestHttpResponse,

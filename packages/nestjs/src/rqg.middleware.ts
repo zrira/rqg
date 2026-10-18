@@ -8,8 +8,12 @@ import {
 } from '@rqg/core';
 import { Inject, Injectable, type NestMiddleware } from '@nestjs/common';
 
-import { ensureContext, getNestRequestId } from './context.js';
-import { RQG_MODULE_OPTIONS } from './tokens.js';
+import {
+  assertSingleRegistration,
+  ensureContext,
+  getNestRequestId,
+} from './context.js';
+import { RQG_MODULE_OPTIONS, RQG_MODULE_REGISTRATION } from './tokens.js';
 import type {
   NestHttpRequest,
   NestHttpResponse,
@@ -23,7 +27,11 @@ export class RqgMiddleware implements NestMiddleware {
   readonly #requestId: ValidatedRequestIdOptions | undefined;
   readonly #observability: NestObservabilityOptions | undefined;
 
-  constructor(@Inject(RQG_MODULE_OPTIONS) options: RqgModuleOptions) {
+  constructor(
+    @Inject(RQG_MODULE_OPTIONS) options: RqgModuleOptions,
+    @Inject(RQG_MODULE_REGISTRATION)
+    private readonly registration: object,
+  ) {
     this.#requestId = validateRequestId(options.requestId);
     this.#observability = validateObservability(options.observability);
   }
@@ -33,6 +41,7 @@ export class RqgMiddleware implements NestMiddleware {
     response: NestHttpResponse,
     next: () => void,
   ): void {
+    assertSingleRegistration(response, this.registration);
     const requestIdOptions = this.#requestId;
     const existingRequestId = getNestRequestId(response);
     const context =

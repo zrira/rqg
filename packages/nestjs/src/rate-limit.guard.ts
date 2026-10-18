@@ -10,9 +10,14 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
+import { assertSingleRegistration } from './context.js';
 import type { RateLimitMetadata } from './decorators.js';
 import { RqgRateLimitRegistry } from './rate-limit-registry.js';
-import { RQG_MODULE_OPTIONS, RQG_RATE_LIMIT_METADATA } from './tokens.js';
+import {
+  RQG_MODULE_OPTIONS,
+  RQG_MODULE_REGISTRATION,
+  RQG_RATE_LIMIT_METADATA,
+} from './tokens.js';
 import type {
   NestHttpRequest,
   NestHttpResponse,
@@ -26,9 +31,13 @@ export class RqgRateLimitGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly registry: RqgRateLimitRegistry,
     @Inject(RQG_MODULE_OPTIONS) private readonly options: RqgModuleOptions,
+    @Inject(RQG_MODULE_REGISTRATION)
+    private readonly registration: object,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const response = context.switchToHttp().getResponse<NestHttpResponse>();
+    assertSingleRegistration(response, this.registration);
     const selection = this.selectPolicy(context);
     if (selection === undefined) return true;
 
@@ -40,7 +49,6 @@ export class RqgRateLimitGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<NestHttpRequest>();
-    const response = context.switchToHttp().getResponse<NestHttpResponse>();
     let identity: unknown;
     try {
       identity = await configuration.identity(request);

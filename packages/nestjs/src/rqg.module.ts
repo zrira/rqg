@@ -12,7 +12,11 @@ import { APP_GUARD } from '@nestjs/core';
 import { RqgRateLimitGuard } from './rate-limit.guard.js';
 import { RqgRateLimitRegistry } from './rate-limit-registry.js';
 import { RqgMiddleware } from './rqg.middleware.js';
-import { RQG_ASYNC_MODULE_OPTIONS, RQG_MODULE_OPTIONS } from './tokens.js';
+import {
+  RQG_ASYNC_MODULE_OPTIONS,
+  RQG_MODULE_OPTIONS,
+  RQG_MODULE_REGISTRATION,
+} from './tokens.js';
 import type { RqgModuleAsyncOptions, RqgModuleOptions } from './types.js';
 
 @Global()
@@ -26,6 +30,7 @@ export class RqgModule implements NestModule {
     validateRootOptions(options);
     return createDynamicModule([
       { provide: RQG_MODULE_OPTIONS, useValue: Object.freeze({ ...options }) },
+      { provide: RQG_MODULE_REGISTRATION, useValue: options },
     ]);
   }
 
@@ -57,6 +62,10 @@ export class RqgModule implements NestModule {
             validateRootOptions(resolved);
             return Object.freeze({ ...resolved });
           },
+        },
+        {
+          provide: RQG_MODULE_REGISTRATION,
+          useExisting: RQG_MODULE_OPTIONS,
         },
       ],
       options.imports,
