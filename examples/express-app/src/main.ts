@@ -24,6 +24,11 @@ const app = express();
 // With the default false value, req.ip comes from the direct socket.
 app.set('trust proxy', false);
 
+// Parser-native limits enforce both declared and chunked decoded body sizes.
+// Configure multipart/upload limits in the selected upload middleware instead.
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: false, limit: '100kb' }));
+
 const standaloneLimiter = rateLimit({
   max: 5,
   windowMs: 60_000,
