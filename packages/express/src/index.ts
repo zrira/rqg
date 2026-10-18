@@ -1,2 +1,3 @@
 /** Express adapters for rqg. */
-export {};
+export { getRequestId, type RqgRequestContext } from './context.js';
+export { requestId, type RequestIdMiddlewareOptions } from './request-id.js';
