@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/core" },
     { "path": "./packages/express" },
-    { "path": "./packages/nestjs" }
+    { "path": "./packages/nestjs" },
+    { "path": "./examples/express-app" }
   ]
 }

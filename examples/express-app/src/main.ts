@@ -1,0 +1,87 @@
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+} from 'express';
+
+import {
+  getRequestId,
+  rateLimit,
+  requestId,
+  requestObservability,
+  rqg,
+} from '@rqg/express';
+
+const logger = {
+  log(record: unknown): void {
+    process.stdout.write(`${JSON.stringify(record)}\n`);
+  },
+};
+
+const app = express();
+
+// Do not enable `trust proxy` without matching the actual proxy topology.
+// With the default false value, req.ip comes from the direct socket.
+app.set('trust proxy', false);
+
+const standaloneLimiter = rateLimit({
+  max: 5,
+  windowMs: 60_000,
+  identity: (request) => request.ip,
+});
+
+app.use('/standalone', requestId());
+app.use('/standalone', requestObservability({ logger }));
+app.use('/standalone', standaloneLimiter);
+app.get('/standalone', (_request, response) => {
+  response.json({ requestId: getRequestId(response), mode: 'standalone' });
+});
+
+app.use(
+  '/combined',
+  rqg({
+    requestId: { acceptIncoming: false },
+    observability: { logger },
+    rateLimit: {
+      max: 5,
+      windowMs: 60_000,
+      identity: (request) => request.ip,
+    },
+  }),
+);
+app.get('/combined', (_request, response) => {
+  response.json({ requestId: getRequestId(response), mode: 'combined' });
+});
+
+app.get('/error', async () => Promise.reject(new Error('Example failure')));
+
+app.use(
+  (
+    error: unknown,
+    _request: Request,
+    response: Response,
+    next: NextFunction,
+  ) => {
+    void _request;
+    void next;
+    process.stderr.write(
+      `${error instanceof Error ? error.message : 'Unknown error'}\n`,
+    );
+    response.status(500).json({ error: 'Internal Server Error' });
+  },
+);
+
+const configuredPort = Number(process.env.PORT ?? 3000);
+if (
+  !Number.isInteger(configuredPort) ||
+  configuredPort < 0 ||
+  configuredPort > 65_535
+) {
+  throw new TypeError('PORT must be an integer from 0 to 65535');
+}
+
+app.listen(configuredPort, () => {
+  process.stdout.write(
+    `rqg Express example listening on port ${configuredPort}\n`,
+  );
+});
