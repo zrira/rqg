@@ -535,6 +535,26 @@ describe('RqgModule configuration', () => {
     expect((await get(origin, '/async')).statusCode).toBe(429);
   });
 
+  it('isolates configuration and in-memory state between applications', async () => {
+    const options: RqgModuleOptions = {
+      rateLimit: {
+        max: 1,
+        windowMs: 100,
+        clock: () => 0,
+        identity: () => 'client',
+      },
+    };
+    const first = await createApplication(options, [AsyncController]);
+    const second = await createApplication(options, [AsyncController]);
+    const firstOrigin = await listen(first);
+    const secondOrigin = await listen(second);
+
+    expect((await get(firstOrigin, '/async')).statusCode).toBe(200);
+    expect((await get(secondOrigin, '/async')).statusCode).toBe(200);
+    expect((await get(firstOrigin, '/async')).statusCode).toBe(429);
+    expect((await get(secondOrigin, '/async')).statusCode).toBe(429);
+  });
+
   it('supports injected asynchronous factory configuration', async () => {
     const testingModule = await Test.createTestingModule({
       imports: [
