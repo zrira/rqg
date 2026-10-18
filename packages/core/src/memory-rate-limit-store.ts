@@ -30,6 +30,7 @@ export class MemoryRateLimitStore implements RateLimitStore {
   readonly #maxEntries: number;
   readonly #cleanupEvery: number;
   #operationsSinceCleanup = 0;
+  #earliestResetAtMs = Number.POSITIVE_INFINITY;
 
   constructor(options: MemoryRateLimitStoreOptions = {}) {
     assertOptions(options);
@@ -44,6 +45,7 @@ export class MemoryRateLimitStore implements RateLimitStore {
   clear(): void {
     this.#entries.clear();
     this.#operationsSinceCleanup = 0;
+    this.#earliestResetAtMs = Number.POSITIVE_INFINITY;
   }
 
   consume(
@@ -57,6 +59,9 @@ export class MemoryRateLimitStore implements RateLimitStore {
     let entry = this.#entries.get(key);
     if (entry !== undefined && nowMs >= entry.resetAtMs) {
       this.#entries.delete(key);
+      if (entry.resetAtMs === this.#earliestResetAtMs) {
+        this.#refreshEarliestReset();
+      }
       entry = undefined;
     }
 
@@ -75,6 +80,7 @@ export class MemoryRateLimitStore implements RateLimitStore {
         windowMs: policy.windowMs,
         resetAtMs,
       });
+      this.#earliestResetAtMs = Math.min(this.#earliestResetAtMs, resetAtMs);
       return freezeResult(true, 1, resetAtMs);
     }
 
@@ -93,7 +99,7 @@ export class MemoryRateLimitStore implements RateLimitStore {
   #runScheduledCleanup(nowMs: number): void {
     this.#operationsSinceCleanup += 1;
     if (this.#operationsSinceCleanup >= this.#cleanupEvery) {
-      this.#deleteExpired(nowMs);
+      if (nowMs >= this.#earliestResetAtMs) this.#deleteExpired(nowMs);
       this.#operationsSinceCleanup = 0;
     }
   }
@@ -101,16 +107,29 @@ export class MemoryRateLimitStore implements RateLimitStore {
   #ensureCapacity(nowMs: number): void {
     if (this.#entries.size < this.#maxEntries) return;
 
-    this.#deleteExpired(nowMs);
+    // When the earliest boundary is still in the future, a full scan cannot
+    // free capacity. This keeps identity flooding O(1) between cleanups.
+    if (nowMs >= this.#earliestResetAtMs) this.#deleteExpired(nowMs);
     if (this.#entries.size >= this.#maxEntries) {
       throw new RateLimitCapacityError();
     }
   }
 
   #deleteExpired(nowMs: number): void {
+    let earliestResetAtMs = Number.POSITIVE_INFINITY;
     for (const [key, entry] of this.#entries) {
       if (nowMs >= entry.resetAtMs) this.#entries.delete(key);
+      else earliestResetAtMs = Math.min(earliestResetAtMs, entry.resetAtMs);
     }
+    this.#earliestResetAtMs = earliestResetAtMs;
+  }
+
+  #refreshEarliestReset(): void {
+    let earliestResetAtMs = Number.POSITIVE_INFINITY;
+    for (const entry of this.#entries.values()) {
+      earliestResetAtMs = Math.min(earliestResetAtMs, entry.resetAtMs);
+    }
+    this.#earliestResetAtMs = earliestResetAtMs;
   }
 }
 

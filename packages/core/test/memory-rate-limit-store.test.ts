@@ -100,7 +100,10 @@ describe('MemoryRateLimitStore', () => {
   });
 
   it('remains bounded under identity flooding', () => {
-    const store = new MemoryRateLimitStore({ maxEntries: 3 });
+    const store = new MemoryRateLimitStore({
+      maxEntries: 3,
+      cleanupEvery: 1,
+    });
 
     for (let index = 0; index < 100; index += 1) {
       try {
@@ -111,6 +114,28 @@ describe('MemoryRateLimitStore', () => {
     }
 
     expect(store.size).toBe(3);
+  });
+
+  it('reclaims capacity at the earliest boundary after repeated rejection', () => {
+    const store = new MemoryRateLimitStore({
+      maxEntries: 2,
+      cleanupEvery: 1,
+    });
+    store.consume('later', { max: 1, windowMs: 200 }, 0);
+    store.consume('earlier', { max: 1, windowMs: 100 }, 0);
+
+    for (let index = 0; index < 20; index += 1) {
+      expect(() => store.consume(`rejected-${index}`, POLICY, 99)).toThrow(
+        RateLimitCapacityError,
+      );
+    }
+
+    expect(store.consume('replacement', POLICY, 100)).toEqual({
+      consumed: true,
+      count: 1,
+      resetAtMs: 200,
+    });
+    expect(store.size).toBe(2);
   });
 
   it('clears state explicitly', () => {
