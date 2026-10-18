@@ -238,6 +238,28 @@ describe('requestObservability', () => {
     });
   });
 
+  it('records a response stream error as failed without duplication', async () => {
+    const { logger, records } = collectingLogger();
+    const app = express();
+    app.use(requestObservability({ logger }));
+    app.get('/stream-error', (_request, response) => {
+      response.emit('error', new Error('transport failed'));
+      response.send('recovered');
+    });
+
+    await withServer(app, async (origin) => {
+      const response = await get(origin, '/stream-error');
+      const record = await waitForRecord(records);
+      expect(response.statusCode).toBe(200);
+      expect(record.context).toMatchObject({
+        path: '/stream-error',
+        statusCode: null,
+        outcome: 'failed',
+      });
+      expect(records).toHaveLength(1);
+    });
+  });
+
   it('records premature response destruction as aborted', async () => {
     const { logger, records } = collectingLogger();
     const app = express();
