@@ -1,0 +1,79 @@
+name: GitHub Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Validate release version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          test "$version" = "$(node -p "require('./package.json').version")"
+      - name: Prepare package-root distributions
+        run: npm run distribution:prepare -- --repository "$GITHUB_REPOSITORY"
+      - name: Create immutable package tags
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          npm run distribution:tags -- --push
+      - name: Verify GitHub installations
+        run: npm run test:consumers:git
+      - name: Pack release assets
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          npm pack .release/packages/core --pack-destination release-assets
+          npm pack .release/packages/express --pack-destination release-assets
+          npm pack .release/packages/nestjs --pack-destination release-assets
+          (cd release-assets && sha256sum *.tgz > SHA256SUMS)
+      - name: Write release notes
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cat > release-notes.md <<EOF
+          # rqg ${GITHUB_REF_NAME}
+
+          Educational HTTP request protection primitives and adapters for Express 5 and NestJS 11.
+
+          ## Install from immutable Git tags
+
+          \`npm install github:${GITHUB_REPOSITORY}#core-v${version}\`
+
+          \`npm install github:${GITHUB_REPOSITORY}#express-v${version} express@^5\`
+
+          \`npm install github:${GITHUB_REPOSITORY}#nestjs-v${version} @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 reflect-metadata@^0.2 rxjs@^7.8\`
+
+          The attached tarballs contain the same package trees. This project is educational, feature-complete for its intended scope, and not actively maintained. Use in production at your own risk.
+          EOF
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+            gh release edit "$GITHUB_REF_NAME" --notes-file release-notes.md --title "$GITHUB_REF_NAME"
+          else
+            gh release create "$GITHUB_REF_NAME" release-assets/* --verify-tag --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+          fi
