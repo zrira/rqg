@@ -5,7 +5,7 @@ Express 5 middleware adapters for `@rqg/core`.
 ## Install
 
 ```bash
-npm install --allow-git=all github:zrira/rqg#express-v0.1.0 express@^5
+npm install --allow-git=all git+https://github.com/zrira/rqg.git#express-v0.1.0 express@^5
 npm install --save-dev @types/express@^5
 ```
 

@@ -50,20 +50,20 @@ Each immutable package tag points to a package-root distribution generated from 
 ### Core
 
 ```bash
-npm install --allow-git=all github:zrira/rqg#core-v0.1.0
+npm install --allow-git=all git+https://github.com/zrira/rqg.git#core-v0.1.0
 ```
 
 ### Express
 
 ```bash
-npm install --allow-git=all github:zrira/rqg#express-v0.1.0 express@^5
+npm install --allow-git=all git+https://github.com/zrira/rqg.git#express-v0.1.0 express@^5
 npm install --save-dev @types/express@^5
 ```
 
 ### NestJS
 
 ```bash
-npm install --allow-git=all github:zrira/rqg#nestjs-v0.1.0 \
+npm install --allow-git=all git+https://github.com/zrira/rqg.git#nestjs-v0.1.0 \
   @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 \
   reflect-metadata@^0.2 rxjs@^7.8
 ```

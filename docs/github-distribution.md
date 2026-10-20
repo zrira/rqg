@@ -20,7 +20,7 @@ For version `0.1.0`, generated commits are referenced by:
 - `express-v0.1.0`
 - `nestjs-v0.1.0`
 
-The tagged tree contains only `package.json`, `README.md`, `LICENSE`, and `dist/`. Adapter manifests pin `@rqg/core` to `github:zrira/rqg#core-v0.1.0`. The source tag `v0.1.0` remains the auditable monorepo release.
+The tagged tree contains only `package.json`, `README.md`, `LICENSE`, and `dist/`. Adapter manifests pin `@rqg/core` to `git+https://github.com/zrira/rqg.git#core-v0.1.0`. The source tag `v0.1.0` remains the auditable monorepo release.
 
 ## Reproducibility
 
@@ -33,21 +33,21 @@ The release workflow validates source, regenerates package trees, creates or ver
 ## Installation
 
 ```bash
-npm install --allow-git=all github:zrira/rqg#core-v0.1.0
-npm install --allow-git=all github:zrira/rqg#express-v0.1.0 express@^5
-npm install --allow-git=all github:zrira/rqg#nestjs-v0.1.0 \
+npm install --allow-git=all git+https://github.com/zrira/rqg.git#core-v0.1.0
+npm install --allow-git=all git+https://github.com/zrira/rqg.git#express-v0.1.0 express@^5
+npm install --allow-git=all git+https://github.com/zrira/rqg.git#nestjs-v0.1.0 \
   @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 \
   reflect-metadata@^0.2 rxjs@^7.8
 ```
 
-npm 12 disables Git dependencies unless installation explicitly opts in with `--allow-git=all`; generated rqg package roots contain no lifecycle scripts. A lockfile records the resolved Git commit, making subsequent `npm ci` installations immutable even if a tag were improperly moved. rqg's release process never moves package tags.
+The explicit `git+https` form supports anonymous public cloning without requiring an SSH key; npm's `github:` shorthand can resolve to SSH. npm 12 disables Git dependencies unless installation explicitly opts in with `--allow-git=all`; generated rqg package roots contain no lifecycle scripts. A lockfile records the resolved Git commit, making subsequent `npm ci` installations immutable even if a tag were improperly moved. rqg's release process never moves package tags.
 
 ## Unsupported layout
 
 This does not install an rqg package:
 
 ```bash
-npm install --allow-git=all github:zrira/rqg#v0.1.0
+npm install --allow-git=all git+https://github.com/zrira/rqg.git#v0.1.0
 ```
 
 That ref points to the private monorepo root package, which intentionally has no runtime entry point or exports. GitHub URL fragments cannot select `packages/core`.

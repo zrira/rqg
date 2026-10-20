@@ -61,7 +61,7 @@ for (const packageName of ['core', 'express', 'nestjs']) {
   delete distributed.publishConfig;
   if (packageName !== 'core') {
     distributed.dependencies = {
-      '@rqg/core': `github:${repository}#core-v${version}`,
+      '@rqg/core': `git+https://github.com/${repository}.git#core-v${version}`,
     };
   }
 

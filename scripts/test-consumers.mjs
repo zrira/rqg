@@ -22,9 +22,9 @@ try {
     mode === 'packed'
       ? await createPackedSpecifications(temporary)
       : {
-          core: `github:${repository}#core-v${version}`,
-          express: `github:${repository}#express-v${version}`,
-          nestjs: `github:${repository}#nestjs-v${version}`,
+          core: `git+https://github.com/${repository}.git#core-v${version}`,
+          express: `git+https://github.com/${repository}.git#express-v${version}`,
+          nestjs: `git+https://github.com/${repository}.git#nestjs-v${version}`,
         };
 
   await testCore(resolve(temporary, 'core-consumer'), specifications.core);

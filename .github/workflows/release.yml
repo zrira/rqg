@@ -58,11 +58,11 @@ jobs:
 
           ## Install from immutable Git tags
 
-          \`npm install --allow-git=all github:${GITHUB_REPOSITORY}#core-v${version}\`
+          \`npm install --allow-git=all git+https://github.com/${GITHUB_REPOSITORY}.git#core-v${version}\`
 
-          \`npm install --allow-git=all github:${GITHUB_REPOSITORY}#express-v${version} express@^5\`
+          \`npm install --allow-git=all git+https://github.com/${GITHUB_REPOSITORY}.git#express-v${version} express@^5\`
 
-          \`npm install --allow-git=all github:${GITHUB_REPOSITORY}#nestjs-v${version} @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 reflect-metadata@^0.2 rxjs@^7.8\`
+          \`npm install --allow-git=all git+https://github.com/${GITHUB_REPOSITORY}.git#nestjs-v${version} @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 reflect-metadata@^0.2 rxjs@^7.8\`
 
           The attached tarballs contain the same package trees. This project is educational, feature-complete for its intended scope, and not actively maintained. Use in production at your own risk.
           EOF

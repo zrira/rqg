@@ -70,7 +70,7 @@ describe('GitHub distribution', () => {
       );
       expect(manifest).toHaveProperty(
         'dependencies.@rqg/core',
-        'github:zrira/rqg#core-v0.1.0',
+        'git+https://github.com/zrira/rqg.git#core-v0.1.0',
       );
     },
   );

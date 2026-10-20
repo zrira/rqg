@@ -7,7 +7,7 @@ NestJS 11 integration for `@rqg/core`, tested with the Express platform adapter.
 ## Install
 
 ```bash
-npm install --allow-git=all github:zrira/rqg#nestjs-v0.1.0 \
+npm install --allow-git=all git+https://github.com/zrira/rqg.git#nestjs-v0.1.0 \
   @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 \
   reflect-metadata@^0.2 rxjs@^7.8
 ```
