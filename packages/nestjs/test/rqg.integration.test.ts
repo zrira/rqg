@@ -165,6 +165,14 @@ async function waitForRecords(
   throw new Error('Timed out waiting for records');
 }
 
+function isApplicationListening(app: INestApplication): boolean {
+  const server: unknown = app.getHttpServer();
+  if (typeof server !== 'object' || server === null) return false;
+  const listening: unknown = (server as { readonly listening?: unknown })
+    .listening;
+  return listening === true;
+}
+
 afterEach(async () => {
   await Promise.all(applications.splice(0).map((app) => app.close()));
 });
@@ -524,7 +532,7 @@ describe('RqgModule configuration', () => {
     applications.push(app);
 
     await expect(app.init()).resolves.toBe(app);
-    expect(app.getHttpServer().listening).toBe(false);
+    expect(isApplicationListening(app)).toBe(false);
   });
 
   it('keeps repeated imports predictable without double consumption', async () => {
@@ -562,7 +570,7 @@ describe('RqgModule configuration', () => {
     await expect(app.init()).rejects.toThrow(
       'Conflicting RqgModule root registrations detected',
     );
-    expect(app.getHttpServer().listening).toBe(false);
+    expect(isApplicationListening(app)).toBe(false);
   });
 
   it('rejects conflicting synchronous registrations before listening', async () => {
@@ -584,7 +592,7 @@ describe('RqgModule configuration', () => {
     await expect(app.init()).rejects.toThrow(
       'Conflicting RqgModule root registrations detected',
     );
-    expect(app.getHttpServer().listening).toBe(false);
+    expect(isApplicationListening(app)).toBe(false);
   });
 
   it('allows an equivalent repeated asynchronous registration', async () => {
@@ -646,7 +654,7 @@ describe('RqgModule configuration', () => {
       'Conflicting RqgModule root registrations detected',
     );
     expect(resolved).toEqual(expect.arrayContaining(['first', 'second']));
-    expect(app.getHttpServer().listening).toBe(false);
+    expect(isApplicationListening(app)).toBe(false);
   });
 
   it('rejects mixed synchronous and asynchronous registrations at startup', async () => {
@@ -665,7 +673,7 @@ describe('RqgModule configuration', () => {
     await expect(app.init()).rejects.toThrow(
       'Conflicting RqgModule root registrations detected',
     );
-    expect(app.getHttpServer().listening).toBe(false);
+    expect(isApplicationListening(app)).toBe(false);
   });
 
   it('isolates configuration and in-memory state between applications', async () => {
