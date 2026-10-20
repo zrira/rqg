@@ -28,6 +28,7 @@ import {
   RqgModule,
   SkipRateLimit,
   type NestHttpRequest,
+  type RqgModuleAsyncOptions,
   type RqgModuleOptions,
 } from '../src/index.js';
 import { get, listen } from './http-test-utils.js';
@@ -514,6 +515,18 @@ class AsyncController {
 }
 
 describe('RqgModule configuration', () => {
+  it('initializes one valid registration before listening', async () => {
+    const testingModule = await Test.createTestingModule({
+      imports: [RqgModule.forRoot({ requestId: false })],
+      controllers: [AsyncController],
+    }).compile();
+    const app = testingModule.createNestApplication();
+    applications.push(app);
+
+    await expect(app.init()).resolves.toBe(app);
+    expect(app.getHttpServer().listening).toBe(false);
+  });
+
   it('keeps repeated imports predictable without double consumption', async () => {
     const options: RqgModuleOptions = {
       rateLimit: {
@@ -535,7 +548,7 @@ describe('RqgModule configuration', () => {
     expect((await get(origin, '/async')).statusCode).toBe(429);
   });
 
-  it('fails closed when conflicting root registrations are active', async () => {
+  it('rejects conflicting synchronous registrations before listening', async () => {
     const shared = {
       windowMs: 100,
       clock: () => 0,
@@ -550,11 +563,92 @@ describe('RqgModule configuration', () => {
     }).compile();
     const app = testingModule.createNestApplication();
     applications.push(app);
+
+    await expect(app.init()).rejects.toThrow(
+      'Conflicting RqgModule root registrations detected',
+    );
+    expect(app.getHttpServer().listening).toBe(false);
+  });
+
+  it('allows an equivalent repeated asynchronous registration', async () => {
+    const options: RqgModuleAsyncOptions = {
+      useFactory: async () =>
+        Promise.resolve({
+          rateLimit: {
+            max: 1,
+            windowMs: 100,
+            clock: () => 0,
+            identity: () => 'client',
+          },
+        }),
+    };
+    const testingModule = await Test.createTestingModule({
+      imports: [
+        RqgModule.forRootAsync(options),
+        RqgModule.forRootAsync(options),
+      ],
+      controllers: [AsyncController],
+    }).compile();
+    const app = testingModule.createNestApplication();
+    applications.push(app);
     const origin = await listen(app);
 
-    const response = await get(origin, '/async');
-    expect(response.statusCode).toBe(500);
-    expect(response.body).not.toContain('registered exactly once');
+    expect((await get(origin, '/async')).statusCode).toBe(200);
+    expect((await get(origin, '/async')).statusCode).toBe(429);
+  });
+
+  it('resolves asynchronous factories before rejecting their conflict', async () => {
+    const resolved: string[] = [];
+    const createOptions = (
+      name: string,
+      max: number,
+    ): RqgModuleAsyncOptions => ({
+      useFactory: async () => {
+        resolved.push(name);
+        return Promise.resolve({
+          rateLimit: {
+            max,
+            windowMs: 100,
+            clock: () => 0,
+            identity: () => 'client',
+          },
+        });
+      },
+    });
+    const testingModule = await Test.createTestingModule({
+      imports: [
+        RqgModule.forRootAsync(createOptions('first', 1)),
+        RqgModule.forRootAsync(createOptions('second', 2)),
+      ],
+      controllers: [AsyncController],
+    }).compile();
+    const app = testingModule.createNestApplication();
+    applications.push(app);
+
+    await expect(app.init()).rejects.toThrow(
+      'Conflicting RqgModule root registrations detected',
+    );
+    expect(resolved).toEqual(expect.arrayContaining(['first', 'second']));
+    expect(app.getHttpServer().listening).toBe(false);
+  });
+
+  it('rejects mixed synchronous and asynchronous registrations at startup', async () => {
+    const testingModule = await Test.createTestingModule({
+      imports: [
+        RqgModule.forRoot({ requestId: false }),
+        RqgModule.forRootAsync({
+          useFactory: async () => Promise.resolve({ requestId: false }),
+        }),
+      ],
+      controllers: [AsyncController],
+    }).compile();
+    const app = testingModule.createNestApplication();
+    applications.push(app);
+
+    await expect(app.init()).rejects.toThrow(
+      'Conflicting RqgModule root registrations detected',
+    );
+    expect(app.getHttpServer().listening).toBe(false);
   });
 
   it('isolates configuration and in-memory state between applications', async () => {
