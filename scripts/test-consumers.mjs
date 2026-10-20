@@ -266,6 +266,22 @@ async function verifyInstalledPackage(directory, packageName) {
     readFile(resolve(packagePath, 'dist/index.js')),
     readFile(resolve(packagePath, 'dist/index.d.ts')),
   ]);
+
+  if (mode === 'git') {
+    const lock = JSON.parse(
+      await readFile(resolve(directory, 'package-lock.json'), 'utf8'),
+    );
+    const lockKey = `node_modules/${packageName}`;
+    const resolved = lock.packages?.[lockKey]?.resolved;
+    if (
+      typeof resolved !== 'string' ||
+      !/^git\+https:\/\/github\.com\/[^#]+#[0-9a-f]{40}$/.test(resolved)
+    ) {
+      throw new Error(
+        `${packageName} lockfile is not pinned to an HTTPS commit`,
+      );
+    }
+  }
 }
 
 function pack(directory, destination) {
