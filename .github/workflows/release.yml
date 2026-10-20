@@ -3,9 +3,19 @@ name: GitHub Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing immutable source tag to release
+        required: true
+        default: v0.1.0
+        type: string
 
 permissions:
   contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
 
 jobs:
   release:
@@ -14,6 +24,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -24,10 +35,12 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - name: Validate release version
+      - name: Validate release tag and version
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          test "$RELEASE_TAG" != "${RELEASE_TAG#v}"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          version="${RELEASE_TAG#v}"
           test "$version" = "$(node -p "require('./package.json').version")"
       - name: Prepare package-root distributions
         run: npm run distribution:prepare -- --repository "$GITHUB_REPOSITORY"
@@ -37,6 +50,13 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           npm run distribution:tags -- --push
+      - name: Load current verification fix for an immutable source tag
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          git cat-file -e "$WORKFLOW_SHA^{commit}" 2>/dev/null || git fetch origin "$WORKFLOW_SHA"
+          git show "$WORKFLOW_SHA:scripts/test-consumers.mjs" > scripts/test-consumers.mjs
       - name: Verify GitHub installations
         run: npm run test:consumers:git
       - name: Pack release assets
@@ -50,9 +70,9 @@ jobs:
       - name: Write release notes
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_TAG#v}"
           cat > release-notes.md <<EOF
-          # rqg ${GITHUB_REF_NAME}
+          # rqg ${RELEASE_TAG}
 
           Educational HTTP request protection primitives and adapters for Express 5 and NestJS 11.
 
@@ -71,9 +91,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
-            gh release edit "$GITHUB_REF_NAME" --notes-file release-notes.md --title "$GITHUB_REF_NAME"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
+            gh release edit "$RELEASE_TAG" --notes-file release-notes.md --title "$RELEASE_TAG"
           else
-            gh release create "$GITHUB_REF_NAME" release-assets/* --verify-tag --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --title "$RELEASE_TAG" --notes-file release-notes.md
           fi

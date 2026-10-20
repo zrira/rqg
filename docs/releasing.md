@@ -53,3 +53,11 @@ gh release download v0.1.0 --dir /tmp/rqg-v0.1.0
 ```
 
 Do not reuse or force-update a released version. Correct release defects with a new semantic version.
+
+If a tag-triggered run fails because of release tooling rather than package contents, fix the tooling on `main` without moving any tag, then dispatch the current workflow against the immutable source tag:
+
+```bash
+gh workflow run release.yml --repo zrira/rqg --ref main -f release_tag=v0.1.0
+```
+
+The repair path checks out the source tag for building and validation. It overlays only the current isolated-consumer verification script from the workflow commit, allowing release verification defects to be repaired without rebuilding from a different source revision.

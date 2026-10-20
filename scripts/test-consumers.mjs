@@ -273,12 +273,19 @@ async function verifyInstalledPackage(directory, packageName) {
     );
     const lockKey = `node_modules/${packageName}`;
     const resolved = lock.packages?.[lockKey]?.resolved;
-    if (
-      typeof resolved !== 'string' ||
-      !/^git\+https:\/\/github\.com\/[^#]+#[0-9a-f]{40}$/.test(resolved)
-    ) {
+    const packageTag = `${packageName.slice('@rqg/'.length)}-v${version}`;
+    const requested = `git+https://github.com/${repository}.git#${packageTag}`;
+    const requestedByPackage = Object.values(lock.packages ?? {}).some(
+      (entry) => entry?.dependencies?.[packageName] === requested,
+    );
+    const pinnedGitCommit =
+      typeof resolved === 'string' &&
+      /^git\+(?:https:\/\/github\.com\/|ssh:\/\/git@github\.com\/)[^#]+#[0-9a-f]{40}$/.test(
+        resolved,
+      );
+    if (!requestedByPackage || !pinnedGitCommit) {
       throw new Error(
-        `${packageName} lockfile is not pinned to an HTTPS commit`,
+        `${packageName} lockfile must request HTTPS and resolve an immutable commit`,
       );
     }
   }
