@@ -1,100 +1,60 @@
-# rqg
+# `@rqg/express`
 
-[![CI](https://github.com/zrira/rqg/actions/workflows/ci.yml/badge.svg)](https://github.com/zrira/rqg/actions/workflows/ci.yml)
+Express 5 middleware adapters for `@rqg/core`.
 
-A small TypeScript toolkit for exploring HTTP request protection and lifecycle design in Node.js, Express 5, and NestJS 11.
-
-> **Project status:** This is an educational and portfolio project. It is feature-complete for its intended scope and is not actively maintained. Use in production at your own risk.
-
-rqg was built to demonstrate framework-neutral primitives, defensive runtime validation, bounded in-memory state, HTTP transport lifecycle handling, and thin framework adapters. It is not a security product, WAF, authentication framework, distributed limiter, or substitute for edge-level protection.
-
-## Architecture
-
-```mermaid
-flowchart BT
-  Express["@rqg/express"] --> Core["@rqg/core"]
-  Nest["@rqg/nestjs"] --> Core
-```
-
-`@rqg/core` contains no Express or NestJS imports. Adapters translate framework requests, dependency injection, and Node HTTP events into core operations.
-
-| Package        | Responsibility                                                                                                      |
-| -------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `@rqg/core`    | Request IDs, monotonic timing, structured logging, observability, fixed-window limiting, and bounded memory storage |
-| `@rqg/express` | Express 5 request-ID, observability, rate-limit, and composed middleware                                            |
-| `@rqg/nestjs`  | NestJS 11 module configuration, middleware, guards, decorators, and policy isolation                                |
-
-## Features
-
-- Canonical UUID v4 request IDs with explicit incoming-header trust.
-- Monotonic operation timing and JSON-compatible structured logging.
-- Node HTTP completion, failure, streaming, and abortion observation.
-- Atomic anchored fixed-window rate limiting.
-- Bounded process-local storage with predictable capacity failure.
-- Express 5 standalone and composed middleware.
-- NestJS 11 synchronous/async configuration, guards, decorators, and startup conflict validation.
-- Fail-open or fail-closed operational policy.
-- Defensive validation for configuration, identities, clocks, stores, loggers, and headers.
-- Documented proxy, body-size, memory, and multi-instance boundaries.
-
-## Requirements
-
-- Node.js 22 or 24
-- npm 10 or newer
-- ESM consumers
-
-## Install from GitHub
-
-Each immutable package tag points to a package-root distribution generated from this monorepo. npm cannot select a workspace subdirectory from a normal Git URL, so do not install the source `v0.1.0` tag as a package.
-
-### Core
-
-```bash
-npm install --allow-git=all git+https://github.com/zrira/rqg.git#core-v0.1.0
-```
-
-### Express
+## Install
 
 ```bash
 npm install --allow-git=all git+https://github.com/zrira/rqg.git#express-v0.1.0 express@^5
 npm install --save-dev @types/express@^5
 ```
 
-### NestJS
+The Git distribution pins its core dependency to `core-v0.1.0`. Express remains a peer dependency so the application controls its framework version. This is an educational portfolio package, not an actively maintained production security product.
 
-```bash
-npm install --allow-git=all git+https://github.com/zrira/rqg.git#nestjs-v0.1.0 \
-  @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 \
-  reflect-metadata@^0.2 rxjs@^7.8
-```
-
-npm 12 disables Git dependencies by default, so the commands explicitly opt in with `--allow-git=all`. The generated packages contain no lifecycle scripts. The adapter package tags depend on the immutable `core-v0.1.0` tag. GitHub Release tarballs are also produced for archival installation. See [GitHub distribution](docs/github-distribution.md).
-
-## Core usage
-
-```ts
-import { createRateLimiter, createRequestId, createTimer } from '@rqg/core';
-
-const requestId = createRequestId();
-const timer = createTimer();
-const limiter = createRateLimiter({ max: 100, windowMs: 60_000 });
-
-const decision = await limiter.consume('tenant-123');
-console.log({ requestId, durationMs: timer.stop(), decision });
-```
-
-## Express usage
+## Request identification
 
 ```ts
 import express from 'express';
-import { getRequestId, rqg } from '@rqg/express';
+import { getRequestId, requestId } from '@rqg/express';
 
 const app = express();
-app.set('trust proxy', false);
+app.use(requestId({ acceptIncoming: false }));
+app.get('/', (_request, response) => {
+  response.json({ requestId: getRequestId(response) });
+});
+```
+
+## Request observability
+
+```ts
+app.use(requestObservability({ logger }));
+```
+
+The middleware records method, safe route template, status, duration, request ID, and `completed`, `failed`, or `aborted` outcome. It never logs headers, bodies, raw URLs, query values, or error objects.
+
+## Rate limiting
+
+```ts
+app.use(
+  rateLimit({
+    max: 100,
+    windowMs: 60_000,
+    identity: (request) => request.ip,
+  }),
+);
+```
+
+Exceeded requests receive HTTP 429, `Retry-After`, `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`. Missing identity receives 400; unavailable protection in fail-closed mode receives 503 without misleading quota headers.
+
+Configure Express `trust proxy` correctly before treating `req.ip` as an original-client identity. Do not log or return raw identity values such as API keys.
+
+## Combined middleware
+
+```ts
 app.use(
   rqg({
     requestId: { acceptIncoming: false },
-    observability: { logger: { log: console.log } },
+    observability: { logger },
     rateLimit: {
       max: 100,
       windowMs: 60_000,
@@ -102,79 +62,28 @@ app.use(
     },
   }),
 );
-app.get('/', (_request, response) => {
-  response.json({ requestId: getRequestId(response) });
-});
-app.listen(3000, '127.0.0.1');
 ```
 
-## NestJS usage
+Execution order is request ID, observability, then rate limiting. Every feature can be omitted or set to `false`.
+
+Registering the same returned rate-limit middleware object more than once consumes once per request. Separately calling `rateLimit()` or `rqg()` constructs independent policies and can intentionally consume multiple quotas.
+
+## Request body limits
+
+rqg does not read or buffer request streams. Configure each parser before affected routes:
 
 ```ts
-import { Controller, Get, Module } from '@nestjs/common';
-import { RateLimit, RequestId, RqgModule } from '@rqg/nestjs';
-
-@Controller()
-class AppController {
-  @Get()
-  @RateLimit({ max: 10, windowMs: 60_000 })
-  get(@RequestId() requestId: string | undefined) {
-    return { requestId };
-  }
-}
-
-@Module({
-  imports: [
-    RqgModule.forRoot({
-      requestId: { acceptIncoming: false },
-      rateLimit: {
-        global: false,
-        max: 100,
-        windowMs: 60_000,
-        identity: (request) => request.ip,
-      },
-    }),
-  ],
-  controllers: [AppController],
-})
-export class AppModule {}
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 ```
 
-## Engineering notes
+These parser limits handle declared and chunked bodies. Configure multipart and streaming limits in their respective middleware; checking `Content-Length` alone is not secure enforcement.
 
-- [Architecture](docs/architecture.md)
-- [Atomicity and concurrency](docs/concepts/concurrency-and-atomicity.md)
-- [Node HTTP lifecycle](docs/concepts/node-http-lifecycle.md)
-- [NestJS dependency injection](docs/concepts/nestjs-dependency-injection.md)
-- [Runtime defensive programming](docs/concepts/defensive-programming.md)
-- [Resource exhaustion](docs/concepts/resource-exhaustion.md)
-- [Security model](docs/security.md)
-- [Deployment security](docs/deployment-security.md)
+## Documentation
 
-## Limitations
-
-- In-memory quotas are local to one store and one Node.js process.
-- Restarts clear in-memory windows; workers and replicas do not coordinate.
-- Distributed storage and distributed rate limiting are not implemented.
-- Fastify integration is not supported.
-- rqg does not parse bodies, authenticate users, prevent request smuggling, or mitigate volumetric DDoS attacks.
-- Correct reverse-proxy trust, parser limits, timeouts, monitoring, and edge controls remain application responsibilities.
-- There is no guaranteed maintenance, vulnerability-response, or support SLA.
-
-## Development
-
-```bash
-npm ci
-npm run format:check
-npm run lint
-npm run typecheck
-npm test
-npm run build
-npm run test:consumers:packed
-```
-
-Build artifacts and temporary consumer projects are not committed.
-
-## License
-
-[MIT](LICENSE)
+- [Express middleware](../../docs/concepts/express-middleware.md)
+- [Node.js HTTP lifecycle](../../docs/concepts/node-http-lifecycle.md)
+- [Reverse proxies and client identity](../../docs/concepts/reverse-proxies-and-client-identity.md)
+- [Request size limits](../../docs/concepts/http-request-size-limits.md)
+- [Deployment security](../../docs/deployment-security.md)
+- [Runnable Express example](../../examples/express-app)
