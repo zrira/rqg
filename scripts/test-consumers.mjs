@@ -267,25 +267,30 @@ async function verifyInstalledPackage(directory, packageName) {
     readFile(resolve(packagePath, 'dist/index.d.ts')),
   ]);
 
+  if (mode === 'git' && packageName !== '@rqg/core') {
+    const expectedCore = `git+https://github.com/${repository}.git#core-v${version}`;
+    if (installed.dependencies?.['@rqg/core'] !== expectedCore) {
+      throw new Error(
+        `${packageName} must declare the immutable HTTPS core tag`,
+      );
+    }
+  }
+
   if (mode === 'git') {
     const lock = JSON.parse(
       await readFile(resolve(directory, 'package-lock.json'), 'utf8'),
     );
     const lockKey = `node_modules/${packageName}`;
     const resolved = lock.packages?.[lockKey]?.resolved;
-    const packageTag = `${packageName.slice('@rqg/'.length)}-v${version}`;
-    const requested = `git+https://github.com/${repository}.git#${packageTag}`;
-    const requestedByPackage = Object.values(lock.packages ?? {}).some(
-      (entry) => entry?.dependencies?.[packageName] === requested,
-    );
+    const repositoryPattern = repository.replaceAll('/', '\\/');
     const pinnedGitCommit =
       typeof resolved === 'string' &&
-      /^git\+(?:https:\/\/github\.com\/|ssh:\/\/git@github\.com\/)[^#]+#[0-9a-f]{40}$/.test(
-        resolved,
-      );
-    if (!requestedByPackage || !pinnedGitCommit) {
+      new RegExp(
+        `^git\\+(?:https:\\/\\/github\\.com\\/${repositoryPattern}\\.git|ssh:\\/\\/git@github\\.com\\/${repositoryPattern}\\.git)#[0-9a-f]{40}$`,
+      ).test(resolved);
+    if (!pinnedGitCommit) {
       throw new Error(
-        `${packageName} lockfile must request HTTPS and resolve an immutable commit`,
+        `${packageName} lockfile must resolve the rqg repository at an immutable commit; received ${String(resolved)}`,
       );
     }
   }
