@@ -10,7 +10,10 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { assertSingleRegistration } from './context.js';
+import {
+  assertSingleRegistration,
+  claimRateLimitRegistration,
+} from './context.js';
 import type { RateLimitMetadata } from './decorators.js';
 import { RqgRateLimitRegistry } from './rate-limit-registry.js';
 import {
@@ -38,6 +41,8 @@ export class RqgRateLimitGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const response = context.switchToHttp().getResponse<NestHttpResponse>();
     assertSingleRegistration(response, this.registration);
+    if (!claimRateLimitRegistration(response, this.registration)) return true;
+
     const selection = this.selectPolicy(context);
     if (selection === undefined) return true;
 

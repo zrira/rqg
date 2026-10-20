@@ -4,6 +4,7 @@ import type { NestHttpResponse } from './types.js';
 
 const contextKey = Symbol('rqg.nest-context');
 const registrationKey = Symbol('rqg.nest-registration');
+const rateLimitRegistrationsKey = Symbol('rqg.nest-rate-limit-registrations');
 
 interface NestRequestContext {
   readonly requestId: CoreRequestId;
@@ -13,6 +14,7 @@ interface NestRequestContext {
 type ContextResponse = NestHttpResponse & {
   [contextKey]?: NestRequestContext;
   [registrationKey]?: object;
+  [rateLimitRegistrationsKey]?: Set<object>;
 };
 
 export function assertSingleRegistration(
@@ -32,6 +34,19 @@ export function assertSingleRegistration(
       writable: false,
     });
   }
+}
+
+export function claimRateLimitRegistration(
+  response: NestHttpResponse,
+  registration: object,
+): boolean {
+  const target = response as ContextResponse;
+  const registrations =
+    target[rateLimitRegistrationsKey] ??
+    (target[rateLimitRegistrationsKey] = new Set());
+  if (registrations.has(registration)) return false;
+  registrations.add(registration);
+  return true;
 }
 
 export function getNestRequestId(

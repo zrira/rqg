@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   type DynamicModule,
   Global,
@@ -92,12 +94,18 @@ function createDynamicModule(
   optionProviders: DynamicModule['providers'],
   imports: DynamicModule['imports'] = [],
 ): DynamicModule {
+  // Nest hashes dynamic metadata to identify module instances. A unique token
+  // prevents distinct registration owners with structurally similar options
+  // from being collapsed before startup validation can inspect them.
+  const dynamicModuleIdentity = Symbol(`rqg.dynamic-module.${randomUUID()}`);
+
   return {
     module: RqgModule,
     global: true,
     imports: [DiscoveryModule, ...(imports ?? [])],
     providers: [
       ...(optionProviders ?? []),
+      { provide: dynamicModuleIdentity, useValue: true },
       RqgRegistrationValidator,
       RqgMiddleware,
       RqgRateLimitRegistry,
