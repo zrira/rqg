@@ -8,11 +8,11 @@ npm Git dependencies install the repository root. A fragment such as `#packages/
 
 Three approaches were evaluated:
 
-| Approach | Result |
-| --- | --- |
-| Three generated repositories | Supports Git installation, but adds repository synchronization, permissions, and maintenance overhead. |
-| GitHub Release tarballs only | Useful immutable archives, but adapter dependency resolution cannot naturally select the core asset through normal npm metadata. |
-| Package-root commits and tags in this repository | Supports npm Git dependencies, keeps one repository, preserves package names/exports/types, and requires no registry. Selected. |
+| Approach                                         | Result                                                                                                                           |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Three generated repositories                     | Supports Git installation, but adds repository synchronization, permissions, and maintenance overhead.                           |
+| GitHub Release tarballs only                     | Useful immutable archives, but adapter dependency resolution cannot naturally select the core asset through normal npm metadata. |
+| Package-root commits and tags in this repository | Supports npm Git dependencies, keeps one repository, preserves package names/exports/types, and requires no registry. Selected.  |
 
 For version `0.1.0`, generated commits are referenced by:
 

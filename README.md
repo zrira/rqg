@@ -18,11 +18,11 @@ flowchart BT
 
 `@rqg/core` contains no Express or NestJS imports. Adapters translate framework requests, dependency injection, and Node HTTP events into core operations.
 
-| Package | Responsibility |
-| --- | --- |
-| `@rqg/core` | Request IDs, monotonic timing, structured logging, observability, fixed-window limiting, and bounded memory storage |
-| `@rqg/express` | Express 5 request-ID, observability, rate-limit, and composed middleware |
-| `@rqg/nestjs` | NestJS 11 module configuration, middleware, guards, decorators, and policy isolation |
+| Package        | Responsibility                                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `@rqg/core`    | Request IDs, monotonic timing, structured logging, observability, fixed-window limiting, and bounded memory storage |
+| `@rqg/express` | Express 5 request-ID, observability, rate-limit, and composed middleware                                            |
+| `@rqg/nestjs`  | NestJS 11 module configuration, middleware, guards, decorators, and policy isolation                                |
 
 ## Features
 
@@ -73,11 +73,7 @@ The adapter package tags depend on the immutable `core-v0.1.0` tag. GitHub Relea
 ## Core usage
 
 ```ts
-import {
-  createRateLimiter,
-  createRequestId,
-  createTimer,
-} from '@rqg/core';
+import { createRateLimiter, createRequestId, createTimer } from '@rqg/core';
 
 const requestId = createRequestId();
 const timer = createTimer();

@@ -17,7 +17,9 @@ if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
   throw new TypeError('GitHub repository must use owner/name format');
 }
 if (output === root || output === resolve('/')) {
-  throw new TypeError('Distribution output must not be a project or filesystem root');
+  throw new TypeError(
+    'Distribution output must not be a project or filesystem root',
+  );
 }
 
 await rm(output, { force: true, recursive: true });
