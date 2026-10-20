@@ -81,7 +81,9 @@ Express remains a peer dependency. Type declarations are compiled against `@type
 
 ## NestJS adapter
 
-`@rqg/nestjs` is a DI-managed adapter over core. `RqgModule` registers singleton configuration, middleware, guard, and limiter-registry providers. Request-specific state remains attached to the Node response under a package-private symbol rather than creating request-scoped providers.
+`@rqg/nestjs` is a DI-managed adapter over core. `RqgModule` registers singleton configuration, middleware, guard, limiter-registry, and registration-validator providers. Request-specific state remains attached to the Node response under a package-private symbol rather than creating request-scoped providers.
+
+Distinct dynamic metadata gives Nest distinct module and provider graphs. During application bootstrap, the validator uses Nest's `DiscoveryService` to inspect all application-local registration providers after asynchronous factories resolve. More than one configuration-owner identity aborts `app.init()` before listening. Reimports using the same sync or async registration object remain equivalent. Identity comparison avoids unsafe serialization of functions and collaborators, while container-local discovery avoids process-global state.
 
 Middleware owns request identification and transport lifecycle observation because it runs before guards and pipes. `RqgRateLimitGuard` owns quota enforcement and Nest HTTP exceptions. RxJS interceptor completion is intentionally not used as a transport-completion signal.
 

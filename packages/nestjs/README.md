@@ -21,7 +21,9 @@ NestJS 11 integration for `@rqg/core`, tested with the Express platform adapter.
 export class AppModule {}
 ```
 
-`forRootAsync({ imports, inject, useFactory })` is also supported. Register exactly one `forRoot()` or `forRootAsync()` call in the root application module. If distinct registrations become active, rqg fails closed with HTTP 500 rather than applying ambiguous global guards. Detection uses request-local state so separate Nest applications remain isolated.
+`forRootAsync({ imports, inject, useFactory })` is also supported. Register one configuration owner with `forRoot()` or `forRootAsync()` in the root application module. Reimporting the same registration options object is equivalent and does not duplicate enforcement. Separately created options objects are distinct owners even when their fields look alike; rqg deliberately does not compare functions, stores, or loggers structurally.
+
+After all synchronous or asynchronous providers resolve, an application-bootstrap validator discovers every active rqg registration. More than one owner rejects `app.init()` and prevents listening. A request-local check remains as defense in depth. Validation state belongs to Nest's application container, so separate applications remain isolated.
 
 ## Controller APIs
 

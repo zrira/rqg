@@ -34,7 +34,7 @@ Monitor `onFailure`, HTTP 503 rates, capacity exhaustion, and store latency. Do 
 
 ## Configuration
 
-Public factories reject malformed runtime configuration rather than coercing values. Nest applications must register one root `RqgModule`. Distinct registrations are detected per request and fail closed with a generic HTTP 500; this avoids ambiguous multiple guards without process-global state leaking across independent applications. Identical repeated imports are deduplicated, but should not be used as a registration strategy.
+Public factories reject malformed runtime configuration rather than coercing values. Nest applications must have one root `RqgModule` configuration owner. Once all DI factories resolve, application-bootstrap validation discovers every active registration and rejects `app.init()` if distinct owners exist. Errors contain no serialized options or secret values. Reimporting the same registration object is permitted; structural comparison of functions and complex collaborators is intentionally avoided. Request-local conflict detection remains as defense in depth, and no process-global state leaks between applications.
 
 ## Resource bounds
 

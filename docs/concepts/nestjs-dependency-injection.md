@@ -23,7 +23,11 @@ export class AppModule {}
 
 Nest modules group providers and define visibility. Dynamic modules add providers based on registration arguments. rqg uses symbol injection tokens so application class names cannot collide with internal configuration providers.
 
-`RqgModule` should be registered once at the application root. Repeated imports with the same options object are tested and do not double-consume quota. Distinct active registrations are detected through request-local state and fail closed with HTTP 500 without exposing configuration details. Detection cannot safely use process-global state because independent Nest applications may coexist, so the error occurs when a request activates both global guards rather than during static module construction.
+`RqgModule` has one configuration-owner contract. Repeated imports created from the same `forRoot()` options object are equivalent and do not double-consume quota. Separately allocated options objects represent distinct owners even when their properties appear equivalent. rqg does not stringify or deeply compare functions, stores, loggers, or secrets.
+
+Each dynamic module has local providers because Nest derives its module token from the dynamic metadata. Distinct registration metadata can therefore create multiple module instances, configuration providers, and `APP_GUARD` providers.
+
+`RqgRegistrationValidator` implements Nest's application-bootstrap lifecycle. It uses `DiscoveryService` to examine every active `RQG_MODULE_REGISTRATION` provider after dependency injection has resolved all modules. More than one identity throws a configuration-only startup error, causing `app.init()` and consequently `listen()` to reject. The existing response-local identity check remains as defense in depth. No process-global registry is used, so independent Nest application containers remain isolated.
 
 ## Asynchronous configuration
 
@@ -43,7 +47,7 @@ RqgModule.forRootAsync<readonly [ConfigService]>({
 });
 ```
 
-The factory may return options or a promise. This phase supports the conventional `useFactory` and `inject` pattern only; class- and existing-provider configuration strategies would add API surface without changing rqg's behavior.
+The factory may return options or a promise. Async options are resolved before application-bootstrap validation. Reimporting the same async registration options object uses one owner identity; different async options objects conflict, including sync/async mixtures. This phase supports the conventional `useFactory` and `inject` pattern only; class- and existing-provider configuration strategies would add API surface without changing rqg's behavior.
 
 ## Provider scopes
 
@@ -81,3 +85,5 @@ Official references:
 - [NestJS custom providers](https://docs.nestjs.com/fundamentals/custom-providers)
 - [NestJS injection scopes](https://docs.nestjs.com/fundamentals/injection-scopes)
 - [NestJS dynamic modules](https://docs.nestjs.com/fundamentals/dynamic-modules)
+- [NestJS lifecycle events](https://docs.nestjs.com/fundamentals/lifecycle-events)
+- [NestJS discovery service](https://docs.nestjs.com/fundamentals/discovery-service)
