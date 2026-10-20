@@ -1,0 +1,1 @@
+{"version":3,"file":"registration-validator.d.ts","sourceRoot":"","sources":["../src/registration-validator.ts"],"names":[],"mappings":"AAAA,OAAO,EAAc,KAAK,sBAAsB,EAAE,MAAM,gBAAgB,CAAC;AACzE,OAAO,EAAE,gBAAgB,EAAE,MAAM,cAAc,CAAC;AAIhD,8EAA8E;AAC9E,qBACa,wBAAyB,YAAW,sBAAsB;IACzD,OAAO,CAAC,QAAQ,CAAC,SAAS;gBAAT,SAAS,EAAE,gBAAgB;IAExD,sBAAsB,IAAI,IAAI;CAsB/B"}

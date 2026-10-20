@@ -1,66 +1,10 @@
-# rqg
+# `@rqg/nestjs`
 
-[![CI](https://github.com/zrira/rqg/actions/workflows/ci.yml/badge.svg)](https://github.com/zrira/rqg/actions/workflows/ci.yml)
+NestJS 11 integration for `@rqg/core`, tested with the Express platform adapter.
 
-A small TypeScript toolkit for exploring HTTP request protection and lifecycle design in Node.js, Express 5, and NestJS 11.
+> Educational portfolio package; not actively maintained or recommended as a drop-in production security solution.
 
-> **Project status:** This is an educational and portfolio project. It is feature-complete for its intended scope and is not actively maintained. Use in production at your own risk.
-
-rqg was built to demonstrate framework-neutral primitives, defensive runtime validation, bounded in-memory state, HTTP transport lifecycle handling, and thin framework adapters. It is not a security product, WAF, authentication framework, distributed limiter, or substitute for edge-level protection.
-
-## Architecture
-
-```mermaid
-flowchart BT
-  Express["@rqg/express"] --> Core["@rqg/core"]
-  Nest["@rqg/nestjs"] --> Core
-```
-
-`@rqg/core` contains no Express or NestJS imports. Adapters translate framework requests, dependency injection, and Node HTTP events into core operations.
-
-| Package        | Responsibility                                                                                                      |
-| -------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `@rqg/core`    | Request IDs, monotonic timing, structured logging, observability, fixed-window limiting, and bounded memory storage |
-| `@rqg/express` | Express 5 request-ID, observability, rate-limit, and composed middleware                                            |
-| `@rqg/nestjs`  | NestJS 11 module configuration, middleware, guards, decorators, and policy isolation                                |
-
-## Features
-
-- Canonical UUID v4 request IDs with explicit incoming-header trust.
-- Monotonic operation timing and JSON-compatible structured logging.
-- Node HTTP completion, failure, streaming, and abortion observation.
-- Atomic anchored fixed-window rate limiting.
-- Bounded process-local storage with predictable capacity failure.
-- Express 5 standalone and composed middleware.
-- NestJS 11 synchronous/async configuration, guards, decorators, and startup conflict validation.
-- Fail-open or fail-closed operational policy.
-- Defensive validation for configuration, identities, clocks, stores, loggers, and headers.
-- Documented proxy, body-size, memory, and multi-instance boundaries.
-
-## Requirements
-
-- Node.js 22 or 24
-- npm 10 or newer
-- ESM consumers
-
-## Install from GitHub
-
-Each immutable package tag points to a package-root distribution generated from this monorepo. npm cannot select a workspace subdirectory from a normal Git URL, so do not install the source `v0.1.0` tag as a package.
-
-### Core
-
-```bash
-npm install --allow-git=all git+https://github.com/zrira/rqg.git#core-v0.1.0
-```
-
-### Express
-
-```bash
-npm install --allow-git=all git+https://github.com/zrira/rqg.git#express-v0.1.0 express@^5
-npm install --save-dev @types/express@^5
-```
-
-### NestJS
+## Install
 
 ```bash
 npm install --allow-git=all git+https://github.com/zrira/rqg.git#nestjs-v0.1.0 \
@@ -68,113 +12,84 @@ npm install --allow-git=all git+https://github.com/zrira/rqg.git#nestjs-v0.1.0 \
   reflect-metadata@^0.2 rxjs@^7.8
 ```
 
-npm 12 disables Git dependencies by default, so the commands explicitly opt in with `--allow-git=all`. The generated packages contain no lifecycle scripts. The adapter package tags depend on the immutable `core-v0.1.0` tag. GitHub Release tarballs are also produced for archival installation. See [GitHub distribution](docs/github-distribution.md).
+The Git distribution pins its core dependency to `core-v0.1.0`.
 
-## Core usage
-
-```ts
-import { createRateLimiter, createRequestId, createTimer } from '@rqg/core';
-
-const requestId = createRequestId();
-const timer = createTimer();
-const limiter = createRateLimiter({ max: 100, windowMs: 60_000 });
-
-const decision = await limiter.consume('tenant-123');
-console.log({ requestId, durationMs: timer.stop(), decision });
-```
-
-## Express usage
+## Registration
 
 ```ts
-import express from 'express';
-import { getRequestId, rqg } from '@rqg/express';
-
-const app = express();
-app.set('trust proxy', false);
-app.use(
-  rqg({
-    requestId: { acceptIncoming: false },
-    observability: { logger: { log: console.log } },
-    rateLimit: {
-      max: 100,
-      windowMs: 60_000,
-      identity: (request) => request.ip,
-    },
-  }),
-);
-app.get('/', (_request, response) => {
-  response.json({ requestId: getRequestId(response) });
-});
-app.listen(3000, '127.0.0.1');
-```
-
-## NestJS usage
-
-```ts
-import { Controller, Get, Module } from '@nestjs/common';
-import { RateLimit, RequestId, RqgModule } from '@rqg/nestjs';
-
-@Controller()
-class AppController {
-  @Get()
-  @RateLimit({ max: 10, windowMs: 60_000 })
-  get(@RequestId() requestId: string | undefined) {
-    return { requestId };
-  }
-}
-
 @Module({
   imports: [
     RqgModule.forRoot({
       requestId: { acceptIncoming: false },
+      observability: { logger },
       rateLimit: {
-        global: false,
         max: 100,
         windowMs: 60_000,
         identity: (request) => request.ip,
       },
     }),
   ],
-  controllers: [AppController],
 })
 export class AppModule {}
 ```
 
-## Engineering notes
+`forRootAsync({ imports, inject, useFactory })` is also supported. Register one configuration owner with `forRoot()` or `forRootAsync()` in the root application module. Reimporting the same registration options object is equivalent and does not duplicate enforcement. Separately created options objects are distinct owners even when their fields look alike; rqg deliberately does not compare functions, stores, or loggers structurally.
 
-- [Architecture](docs/architecture.md)
-- [Atomicity and concurrency](docs/concepts/concurrency-and-atomicity.md)
-- [Node HTTP lifecycle](docs/concepts/node-http-lifecycle.md)
-- [NestJS dependency injection](docs/concepts/nestjs-dependency-injection.md)
-- [Runtime defensive programming](docs/concepts/defensive-programming.md)
-- [Resource exhaustion](docs/concepts/resource-exhaustion.md)
-- [Security model](docs/security.md)
-- [Deployment security](docs/deployment-security.md)
+After all synchronous or asynchronous providers resolve, an application-bootstrap validator discovers every active rqg registration. More than one owner rejects `app.init()` and prevents listening. A request-local check remains as defense in depth. Validation state belongs to Nest's application container, so separate applications remain isolated.
 
-## Limitations
+## Controller APIs
 
-- In-memory quotas are local to one store and one Node.js process.
-- Restarts clear in-memory windows; workers and replicas do not coordinate.
-- Distributed storage and distributed rate limiting are not implemented.
-- Fastify integration is not supported.
-- rqg does not parse bodies, authenticate users, prevent request smuggling, or mitigate volumetric DDoS attacks.
-- Correct reverse-proxy trust, parser limits, timeouts, monitoring, and edge controls remain application responsibilities.
-- There is no guaranteed maintenance, vulnerability-response, or support SLA.
+```ts
+@Controller('users')
+@RateLimit({ max: 20, windowMs: 60_000 })
+export class UsersController {
+  @Get(':id')
+  get(@RequestId() requestId: string | undefined) {
+    return { requestId };
+  }
 
-## Development
+  @RateLimit({ max: 5, windowMs: 60_000 })
+  @Post('login')
+  login() {}
 
-```bash
-npm ci
-npm run format:check
-npm run lint
-npm run typecheck
-npm test
-npm run build
-npm run test:consumers:packed
+  @SkipRateLimit()
+  @Get('health')
+  health() {}
+}
 ```
 
-Build artifacts and temporary consumer projects are not committed.
+Method metadata overrides controller metadata, which overrides the module global policy. Route scopes are namespaced by application-local controller/handler identity before entering the shared store, so distinct same-named classes do not share counters.
 
-## License
+## HTTP behavior
 
-[MIT](LICENSE)
+Known quota exhaustion returns 429 with quota headers and `Retry-After`. Missing identity returns 400. Fail-closed operational failure returns 503 without quota headers; fail-open continues and can be observed through `onFailure`.
+
+Observability uses Node response events rather than RxJS completion, so guard, pipe, exception-filter, streaming, and manually handled responses are covered.
+
+## Request body limits
+
+For the supported Express platform, configure Nest's parser before listening:
+
+```ts
+const app = await NestFactory.create<NestExpressApplication>(AppModule);
+app.useBodyParser('json', { limit: '100kb' });
+app.useBodyParser('urlencoded', { extended: false, limit: '100kb' });
+```
+
+Multipart, raw, custom-parser, and streaming endpoints require their own limits. rqg does not inspect `Content-Length` or consume the request stream.
+
+## Compatibility
+
+- NestJS 11 Express platform: supported and integration tested.
+- Fastify: not currently supported or claimed.
+- `@rqg/express` in the same request pipeline: unsupported; choose one adapter to avoid duplicate IDs, observers, and quota consumption.
+
+## Guides
+
+- [Dependency injection](../../docs/concepts/nestjs-dependency-injection.md)
+- [Request lifecycle](../../docs/concepts/nestjs-request-lifecycle.md)
+- [Guards and interceptors](../../docs/concepts/nestjs-guards-and-interceptors.md)
+- [Rate-limit policies](../../docs/concepts/nestjs-rate-limit-policies.md)
+- [Request size limits](../../docs/concepts/http-request-size-limits.md)
+- [Deployment security](../../docs/deployment-security.md)
+- [Runnable example](../../examples/nestjs-app)
