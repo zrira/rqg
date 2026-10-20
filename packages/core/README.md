@@ -7,7 +7,7 @@ Framework-independent request-protection and observability primitives for rqg.
 ## Install
 
 ```bash
-npm install github:zrira/rqg#core-v0.1.0
+npm install --allow-git=all github:zrira/rqg#core-v0.1.0
 ```
 
 ## Request identification

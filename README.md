@@ -50,25 +50,25 @@ Each immutable package tag points to a package-root distribution generated from 
 ### Core
 
 ```bash
-npm install github:zrira/rqg#core-v0.1.0
+npm install --allow-git=all github:zrira/rqg#core-v0.1.0
 ```
 
 ### Express
 
 ```bash
-npm install github:zrira/rqg#express-v0.1.0 express@^5
+npm install --allow-git=all github:zrira/rqg#express-v0.1.0 express@^5
 npm install --save-dev @types/express@^5
 ```
 
 ### NestJS
 
 ```bash
-npm install github:zrira/rqg#nestjs-v0.1.0 \
+npm install --allow-git=all github:zrira/rqg#nestjs-v0.1.0 \
   @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 \
   reflect-metadata@^0.2 rxjs@^7.8
 ```
 
-The adapter package tags depend on the immutable `core-v0.1.0` tag. GitHub Release tarballs are also produced for archival installation. See [GitHub distribution](docs/github-distribution.md).
+npm 12 disables Git dependencies by default, so the commands explicitly opt in with `--allow-git=all`. The generated packages contain no lifecycle scripts. The adapter package tags depend on the immutable `core-v0.1.0` tag. GitHub Release tarballs are also produced for archival installation. See [GitHub distribution](docs/github-distribution.md).
 
 ## Core usage
 

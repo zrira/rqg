@@ -33,21 +33,21 @@ The release workflow validates source, regenerates package trees, creates or ver
 ## Installation
 
 ```bash
-npm install github:zrira/rqg#core-v0.1.0
-npm install github:zrira/rqg#express-v0.1.0 express@^5
-npm install github:zrira/rqg#nestjs-v0.1.0 \
+npm install --allow-git=all github:zrira/rqg#core-v0.1.0
+npm install --allow-git=all github:zrira/rqg#express-v0.1.0 express@^5
+npm install --allow-git=all github:zrira/rqg#nestjs-v0.1.0 \
   @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 \
   reflect-metadata@^0.2 rxjs@^7.8
 ```
 
-A lockfile records the resolved Git commit, making subsequent `npm ci` installations immutable even if a tag were improperly moved. rqg's release process never moves package tags.
+npm 12 disables Git dependencies unless installation explicitly opts in with `--allow-git=all`; generated rqg package roots contain no lifecycle scripts. A lockfile records the resolved Git commit, making subsequent `npm ci` installations immutable even if a tag were improperly moved. rqg's release process never moves package tags.
 
 ## Unsupported layout
 
 This does not install an rqg package:
 
 ```bash
-npm install github:zrira/rqg#v0.1.0
+npm install --allow-git=all github:zrira/rqg#v0.1.0
 ```
 
 That ref points to the private monorepo root package, which intentionally has no runtime entry point or exports. GitHub URL fragments cannot select `packages/core`.

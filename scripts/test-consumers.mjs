@@ -224,7 +224,13 @@ async function createConsumer(directory, dependencies) {
   );
   run(
     'npm',
-    ['install', '--no-audit', '--no-fund', ...dependencies],
+    [
+      'install',
+      '--no-audit',
+      '--no-fund',
+      ...(mode === 'git' ? ['--allow-git=all'] : []),
+      ...dependencies,
+    ],
     directory,
   );
 }
