@@ -1,6 +1,6 @@
 {
   "name": "@rqg-example/express-app",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@rqg/express": "0.0.0",
+    "@rqg/express": "0.1.0",
     "express": "^5.3.0"
   }
 }

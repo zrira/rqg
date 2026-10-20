@@ -6,16 +6,22 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
-    files: ['**/*.js'],
-    ...tseslint.configs.disableTypeChecked,
-  },
-  {
     languageOptions: {
       parserOptions: {
         projectService: {
           allowDefaultProject: ['*.js', '*.ts'],
         },
         tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: ['**/*.{js,mjs}'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      parserOptions: {
+        project: false,
+        projectService: false,
       },
     },
   },

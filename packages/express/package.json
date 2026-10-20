@@ -1,8 +1,15 @@
 {
   "name": "@rqg/express",
-  "version": "0.0.0",
-  "description": "Express integration for rqg",
+  "version": "0.1.0",
+  "description": "Express 5 integration for rqg",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zrira/rqg.git",
+    "directory": "packages/express"
+  },
+  "homepage": "https://github.com/zrira/rqg#readme",
+  "bugs": "https://github.com/zrira/rqg/issues",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -22,15 +29,12 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@rqg/core": "0.0.0"
+    "@rqg/core": "0.1.0"
   },
   "peerDependencies": {
     "express": ">=5.0.0 <6"
   },
   "engines": {
-    "node": ">=24.0.0"
-  },
-  "publishConfig": {
-    "access": "public"
+    "node": ">=22.0.0"
   }
 }

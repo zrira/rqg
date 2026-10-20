@@ -25,6 +25,7 @@ describe('workspace architecture', () => {
       const manifest = await readManifest(packageName);
 
       expect(manifest).toMatchObject({
+        version: '0.1.0',
         type: 'module',
         exports: {
           '.': {
@@ -48,7 +49,7 @@ describe('workspace architecture', () => {
     async (packageName) => {
       const manifest = await readManifest(packageName);
 
-      expect(manifest).toHaveProperty('dependencies.@rqg/core', '0.0.0');
+      expect(manifest).toHaveProperty('dependencies.@rqg/core', '0.1.0');
     },
   );
 });
