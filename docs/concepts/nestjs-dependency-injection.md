@@ -25,7 +25,7 @@ Nest modules group providers and define visibility. Dynamic modules add provider
 
 `RqgModule` has one configuration-owner contract. Repeated imports created from the same `forRoot()` options object are equivalent and do not double-consume quota. Separately allocated options objects represent distinct owners even when their properties appear equivalent. rqg does not stringify or deeply compare functions, stores, loggers, or secrets.
 
-Each dynamic module has local providers because Nest derives its module token from the dynamic metadata. Distinct registration metadata can therefore create multiple module instances, configuration providers, and `APP_GUARD` providers.
+Each dynamic module has local providers because Nest derives its module token from the dynamic metadata. rqg includes a per-call opaque marker so Nest cannot collapse distinct owners whose functions or collaborator objects happen to serialize alike. Distinct registrations therefore remain visible as separate module instances, configuration providers, and `APP_GUARD` providers. Repeated calls using the same options object retain one owner identity; the request guard claims that identity once so equivalent duplicate guards cannot consume quota twice.
 
 `RqgRegistrationValidator` implements Nest's application-bootstrap lifecycle. It uses `DiscoveryService` to examine every active `RQG_MODULE_REGISTRATION` provider after dependency injection has resolved all modules. More than one identity throws a configuration-only startup error, causing `app.init()` and consequently `listen()` to reject. The existing response-local identity check remains as defense in depth. No process-global registry is used, so independent Nest application containers remain isolated.
 
