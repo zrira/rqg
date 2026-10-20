@@ -2,6 +2,14 @@
 
 Framework-independent request-protection and observability primitives for rqg.
 
+> Educational portfolio package; not actively maintained or recommended as a drop-in production security solution.
+
+## Install
+
+```bash
+npm install github:zrira/rqg#core-v0.1.0
+```
+
 ## Request identification
 
 ```ts

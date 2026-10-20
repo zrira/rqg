@@ -5,11 +5,11 @@ Express 5 middleware adapters for `@rqg/core`.
 ## Install
 
 ```bash
-npm install @rqg/core @rqg/express express
-npm install --save-dev @types/express
+npm install github:zrira/rqg#express-v0.1.0 express@^5
+npm install --save-dev @types/express@^5
 ```
 
-Express remains a peer dependency so the application controls its framework version.
+The Git distribution pins its core dependency to `core-v0.1.0`. Express remains a peer dependency so the application controls its framework version. This is an educational portfolio package, not an actively maintained production security product.
 
 ## Request identification
 

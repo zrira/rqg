@@ -2,6 +2,18 @@
 
 NestJS 11 integration for `@rqg/core`, tested with the Express platform adapter.
 
+> Educational portfolio package; not actively maintained or recommended as a drop-in production security solution.
+
+## Install
+
+```bash
+npm install github:zrira/rqg#nestjs-v0.1.0 \
+  @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 \
+  reflect-metadata@^0.2 rxjs@^7.8
+```
+
+The Git distribution pins its core dependency to `core-v0.1.0`.
+
 ## Registration
 
 ```ts
