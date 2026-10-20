@@ -548,6 +548,23 @@ describe('RqgModule configuration', () => {
     expect((await get(origin, '/async')).statusCode).toBe(429);
   });
 
+  it('treats separately created equivalent options as conflicting owners', async () => {
+    const testingModule = await Test.createTestingModule({
+      imports: [
+        RqgModule.forRoot({ requestId: false }),
+        RqgModule.forRoot({ requestId: false }),
+      ],
+      controllers: [AsyncController],
+    }).compile();
+    const app = testingModule.createNestApplication();
+    applications.push(app);
+
+    await expect(app.init()).rejects.toThrow(
+      'Conflicting RqgModule root registrations detected',
+    );
+    expect(app.getHttpServer().listening).toBe(false);
+  });
+
   it('rejects conflicting synchronous registrations before listening', async () => {
     const shared = {
       windowMs: 100,
