@@ -7,9 +7,10 @@ import {
   type NestModule,
   RequestMethod,
 } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, DiscoveryModule } from '@nestjs/core';
 
 import { RqgRateLimitGuard } from './rate-limit.guard.js';
+import { RqgRegistrationValidator } from './registration-validator.js';
 import { RqgRateLimitRegistry } from './rate-limit-registry.js';
 import { RqgMiddleware } from './rqg.middleware.js';
 import {
@@ -65,7 +66,7 @@ export class RqgModule implements NestModule {
         },
         {
           provide: RQG_MODULE_REGISTRATION,
-          useExisting: RQG_MODULE_OPTIONS,
+          useValue: options,
         },
       ],
       options.imports,
@@ -94,9 +95,10 @@ function createDynamicModule(
   return {
     module: RqgModule,
     global: true,
-    imports,
+    imports: [DiscoveryModule, ...(imports ?? [])],
     providers: [
       ...(optionProviders ?? []),
+      RqgRegistrationValidator,
       RqgMiddleware,
       RqgRateLimitRegistry,
       RqgRateLimitGuard,
