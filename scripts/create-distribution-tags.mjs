@@ -69,12 +69,13 @@ function commitTree(tree, parent, packageName, releaseVersion) {
 }
 
 function git(arguments_, options = {}) {
-  return execFileSync('git', arguments_, {
+  const output = execFileSync('git', arguments_, {
     cwd: root,
     encoding: 'utf8',
     env: options.environment ?? process.env,
     stdio: options.stdio ?? ['ignore', 'pipe', 'pipe'],
-  }).trim();
+  });
+  return typeof output === 'string' ? output.trim() : '';
 }
 
 function tryGit(arguments_) {
